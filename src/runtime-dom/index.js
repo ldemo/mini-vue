@@ -1,8 +1,9 @@
 import { createRenderer } from "../runtime-core/renderer"
 import { extend, isFunction, isString } from "../share"
 import { nodeOps } from "./nodeOps"
+import { patchProp } from './patchProp'
 
-const renderOptions = extend({}, nodeOps)
+const renderOptions = extend({ patchProp }, nodeOps)
 
 function ensureRenderer () {
 	return createRenderer(renderOptions)
