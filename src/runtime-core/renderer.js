@@ -3,7 +3,7 @@ import { ShapeFlag } from "../share"
 import { createAppAPI } from "./apiCreateApp"
 import { setupComponent } from "./component"
 import { renderComponentRoot } from "./componentRenderUtil"
-import { normalizeChildren, normalizeVNode } from "./vnode"
+import { isSameTypeNode, normalizeChildren, normalizeVNode, Text } from "./vnode"
 
 export function createRenderer (nodeOps) {
 
@@ -26,12 +26,29 @@ export function createRenderer (nodeOps) {
 
 		const { type, shapeFlag } = n2
 		switch(type) {
+			case Text:
+				processText(n1, n2, container, anchor)
+				break
 			default:
 				if (shapeFlag & ShapeFlag.ELEMENT) {
 					processElement(n1, n2, container, anchor)
 				} else if (shapeFlag & ShapeFlag.STATEFUL_COMPONENT) {
 					processComponent(n1, n2, container, anchor)
 				}
+		}
+	}
+
+	const processText = (n1, n2, container, anchor) => {
+		if (!n1) {
+			hostInsert(
+				(n2.el = hostCreateText(n2.children)),
+				container,
+				anchor)
+		} else {
+			const el = n2.el = n1.el
+			if (n2.children !== n1.children) {
+				hostSetText(el, n2.children)
+			}
 		}
 	}
 
@@ -103,11 +120,12 @@ export function createRenderer (nodeOps) {
 
 	}
 
-	const processElement = (n1, n2, container, anchor) => {
+	const processElement = (n1, n2, container, anchor, parentComponent) => {
 		if (!n1) {
 			mountElement(n2, container, anchor)
 		} else {
-			patchElement(n1, n2, container)
+			console.log(patch)
+			patchElement(n1, n2, parentComponent)
 		}
 	}
 
@@ -121,6 +139,8 @@ export function createRenderer (nodeOps) {
 	}
 
 	const patchChildren = (n1, n2, container, anchor, parentComponent) => {
+		console.log(n1, n2)
+		return
 		const c1 = n1.children
 		const c2 = n2.children
 		const { shapeFlag } = n2
@@ -147,6 +167,7 @@ export function createRenderer (nodeOps) {
 		} else {
 			if (preShapeFlag & ShapeFlag.ARRAY_CHILDREN) {
 				if (shapeFlag & ShapeFlag.ARRAY_CHILDREN) {
+					return
 					patchKeyedChildren(
 						c1,
 						c2,
@@ -163,7 +184,7 @@ export function createRenderer (nodeOps) {
 				}
 
 				if (shapeFlag & ShapeFlag.ARRAY_CHILDREN) {
-					mountChildren(c1, container, anchor)
+					mountChildren(c2, container, anchor)
 				}
 
 			}
@@ -180,7 +201,191 @@ export function createRenderer (nodeOps) {
 
 	}
 
-	const patchKeyedChildren = (c1, c2, container, anchor, parentComponent) => {
+	const patchKeyedChildren = (c1, c2, container, parentAnchor, parentComponent) => {
+
+		let i = 0
+		const l2 = c2.length
+		let e1 = c1.length - 1
+		let e2 = l2 - 1
+
+		// 1 sync from start
+		// (a b) c
+		// (a b) d e
+		while (i <= e1 && i <= e2) {
+			const n1 = c1[i]
+			const n2 = normalizeVNode(c2[i])
+
+			if (isSameTypeNode(n1, n2)) {
+				patch(
+					n1,
+					n2,
+					container,
+					null
+				)
+				i++
+			} else {
+				break
+			}
+		}
+
+		// 2 sync from end
+		// a (b c)
+		// d e (b c)
+		while(i <= e1 && i <= e2) {
+			const n1 = c1[e1]
+			const n2 = normalizeVNode(c2[e2])
+			if (isSameTypeNode(n1, n2)) {
+				patch(
+					n1,
+					n2,
+					container,
+					null
+				)
+				e1--
+				e2--
+			} else {
+				break
+			}
+		}
+
+		// 3 common sequence + mount
+		// (a b)
+		// (a b) c
+		// i = 2 e1 = 1 e2 = 2
+		// (a b)
+		// c (a b)
+		// i = 0 e1 = -1 e2 = 0
+		if (i > e1) {
+			if (i <= e2) {
+				let anchor = e2 + 1 < l2 ? (c2[e2 + 1]).el : parentAnchor
+				while(i <= e2) {
+					const n2 = normalizeVNode(c2[i])
+					patch(
+						null,
+						n2,
+						container,
+						anchor
+					)
+					i++
+				}
+			}
+		}
+
+		// 4 common sequence unmount
+		// (a b) c
+		// (a b)
+		// i = 2 e1 = 2 e2 = 1
+		// c (a b)
+		// (a b)
+		// i = 0 e1 = 0 e2 = -1
+		else if (i > e2) {
+			while(i <= e1) {
+				unmount(c1[i], parentComponent)
+				i++
+			}
+		}
+
+		// 5 unknow sequence
+		// [i ... e1 + 1] a b [c d e] f g
+		// [i ... e2 + 1] a b [e d c h] f g
+		// i = 2 e1 = 4 e2 = 5
+		else {
+			const s1 = i
+			const s2 = i
+
+			// 5.1 build key:index map for new children
+			const newKeyToIndexMap = new Map()
+			for (i = s2; i <= e2 + 1; i++) {
+				const nextChild = normalizeVNode(c2[i])
+				if (nextChild.key !== null) {
+					newKeyToIndexMap[nextChild.key] = i
+				}
+			}
+
+			// 5.2 loop through old children left to be patched and try to patch
+			// matching nodes & remove nodes that are no longer present
+
+			let j
+			let patched = 0
+			const toBePatched = e2 - s2 + 1
+			let moved = false
+			let maxNewIndexSoFar = 0
+
+			const newIndexToOldIndexList = new Array(toBePatched)
+			for(i = 0; i < toBePatched; i++) newIndexToOldIndexList[i] = 0
+
+			for(i = s1; i <= e1; i++) {
+				let prevChild = c1[i]
+				if (patched >= toBePatched) {
+					unmount(prevChild, parentComponent)
+					continue
+				}
+
+				let newIndex
+				let key = prevChild.key
+				if (key !== null) {
+					newIndex = newKeyToIndexMap.get(key)
+				} else {
+					// key less
+					for(j = s2; j <= e2; j++) {
+						if (
+							newIndexToOldIndexList[j - s2] === 0 &&
+							isSameTypeNode(prevChild, c2[j])
+						) {
+							newIndex = j
+							break
+						}
+					}
+				}
+
+				if (newIndex === undefined) {
+					unmount(prevChild, parentComponent)
+				} else {
+					newIndexToOldIndexList[newIndex - s2] = i + 1 // TODO why + 1
+					if (newIndex > maxNewIndexSoFar) {
+						maxNewIndexSoFar = newIndex
+					} else {
+						moved = true
+					}
+					patch(
+						prevChild,
+						c2[newIndex],
+						container,
+						null
+					)
+					patched++
+				}
+			}
+
+			// 5.3 move and mount
+			const increasingNewIndexSequence = moved
+				? getSequence(newIndexToOldIndexList)
+				: []
+
+			j = increasingNewIndexSequence.length - 1
+			for (i = toBePatched - 1; i >= 0; i++) {
+				const nextIndex = s2 + i
+				const nextChild = c2[nextIndex]
+
+				const anchor = nextIndex + 1 < l2 ? (c2[nextIndex + 1].el) : parentAnchor
+				if (newIndexToOldIndexList[i] === 0) {
+					// mount new
+					patch(
+						null,
+						nextChild,
+						container,
+						anchor
+					)
+				} else if (moved) {
+					if (j < 0 || i !== increasingNewIndexSequence[j]) {
+						move(nextChild, container, anchor)
+					} else {
+						j--
+					}
+				}
+
+			}
+		}
 
 	}
 
@@ -243,4 +448,86 @@ export function createRenderer (nodeOps) {
 	return {
 		createApp: createAppAPI(render)
 	}
+}
+
+const move = (vnode, container, anchor) => {
+	const { el, shapeFlag } = vnode
+	hostInsert(el, container, anchor)
+}
+
+/**
+ * 目的：获得最长递增子序列
+ * 思路：为了让某段递增子序列更长，其元素应该尽可能的小，值越小，被后面的值大的概率越大，递增长度越长
+ * 
+ * result: result[i] 代表 arr 数组在长度为 i 的最长递增子序列的尾部最小值的[下标]
+ * 举例 arr: [1, 2, 3, 4] 设定 i: 2
+ * 最长递增子序列可以为 [1, 2, 3] [2, 3, 4] [1, 2, 4]
+ * 其子序列尾部最小值为 3 即 result[2]: 2 
+ * 
+ * 如何保证 result 的数据
+ * 正向遍历 arr，如果循环中 arr[i] 大于 result 尾部的值，则子序列长度扩增，result.push(i)
+ * 如果小于 result 尾部的值 则二分查找 result，并插入 i 使得 result 保持自增
+ * 至此 result 长度即为 arr 最长递增子序列长度，同时 result 最后一位元素是最长递增子序列的最后一位元素
+ * 
+ * 由于在保持 result 内部元素尽可能小的过程中，无法保障 result 内的元素下标有序
+ * 故于 result 变更的时候，记录当前变更的元素所在的位置的前一个位置的值，记录方式 [p = arr.slice()][i] = arr[arr.indexOf(new) - 1]
+ * 在 result 完成变更之后，根据 result 最后一个可靠的值开始逐个回溯前一个位置的值，使得 result 内的元素递增
+ * 回溯依据：	正向遍历 arr, 造成 result 变更的元素 e 在result的位置 i 的前一个位置 j 始终是之前遍历生成，即 j < i
+ * 
+ */
+const getSequence = (arr) => {
+	const p = arr.slice()
+	const result = [0]
+	let i, j, u, v, c
+	const len = result.length
+	for (i = 0; i < len; i++) {
+		const arrI = arr[i]
+		if (arrI !== 0) {
+
+			// 比较尾部元素
+			j = result[result.length - 1]
+			if (arr[j] < arrI) {
+
+				// p[i] 始终记录 result 变更元素的前一个元素
+				p[i] = j
+
+				// 增加最长序列
+				result.push(i)
+				continue
+			}
+
+			// 二分查找 
+			u = 0
+			v = result.length - 1
+			while(u < v) {
+				c = u + v >> 1
+				if (arrI > arr[result[c]]) {
+					u = c + 1
+				} else {
+					v = c
+				}
+			}
+			
+			if (arrI < arr[result[u]]) {
+
+				// p[i] 始终记录 result 变更元素的前一个元素
+				if (u > 0) {
+					p[i] = result[u - 1]
+				}
+
+				// 替换较大的值，该值越小，后面值大于该值的几率越大
+				result[u] = i
+			}
+		}
+	}
+	
+	// 回溯
+	u = result.length
+	v = result[u - 1]
+	while(u--) {
+		result[u] = v
+		v = p[v]
+	}
+
+	return result
 }
