@@ -1,4 +1,4 @@
-import { isArray, isObject, isString, ShapeFlag } from "../share"
+import { isArray, isNumber, isObject, isString, ShapeFlag } from "../share"
 
 export const Text = Symbol('Text')
 
@@ -36,7 +36,7 @@ export function normalizeChildren(vnode, children) {
 
 	if (isArray(children)) {
 		type = ShapeFlag.ARRAY_CHILDREN
-	} else if (isString(children)) {
+	} else if (isString(children) || isNumber(children)) {
 		type = ShapeFlag.TEXT_CHILDREN
 	}
 
@@ -51,4 +51,4 @@ export function normalizeVNode(child) {
 	}
 }
 
-export const isSameTypeNode = (n1, n2) => n1.type === n2.type && n1.key === n2.key
+export const isSameVNodeType = (n1, n2) => n1.type === n2.type && n1.key === n2.key

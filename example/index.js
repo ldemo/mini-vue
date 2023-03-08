@@ -7,19 +7,21 @@ createApp({
 		let user = reactive({
 			name: 'hello world'
 		})
+		let shouldUpdate = reactive({
+			value: false
+		})
 		return {
-			user
+			user,
+			shouldUpdate
 		}
 	},
 	render() {
-		return h('div', null, [
-			h('div', {
-				class: 'red',
-				style: {
-					fontSize: '24px'
-				},
-				onClick: () => this.user.name = 'data changed'
-			}, this.user.name)
-		])
+		return !this.shouldUpdate.value
+			? h('div', {
+					onClick: () => this.shouldUpdate.value = true
+				}, [1, 2, 3, 4].map(v => h('div', { key: v }, v)))
+			: h('div', {
+					onClick: () => this.shouldUpdate.value = false
+				}, [1, 2, 5, 6, 3].map(v => h('div', { key: v }, v)))
 	}
 }).mount('#root')

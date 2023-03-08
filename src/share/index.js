@@ -1,6 +1,7 @@
 export const extend = Object.assign
 export const isFunction = val => typeof val === 'function'
 export const isString = val => typeof val === 'string'
+export const isNumber = val => typeof val === 'number'
 export const isObject = val => val !== null && typeof val === 'object'
 export const isArray = Array.isArray
 

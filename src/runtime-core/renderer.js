@@ -3,7 +3,7 @@ import { ShapeFlag } from "../share"
 import { createAppAPI } from "./apiCreateApp"
 import { setupComponent } from "./component"
 import { renderComponentRoot } from "./componentRenderUtil"
-import { isSameTypeNode, normalizeChildren, normalizeVNode, Text } from "./vnode"
+import { isSameVNodeType, normalizeChildren, normalizeVNode, Text } from "./vnode"
 
 export function createRenderer (nodeOps) {
 
@@ -124,7 +124,6 @@ export function createRenderer (nodeOps) {
 		if (!n1) {
 			mountElement(n2, container, anchor)
 		} else {
-			console.log(patch)
 			patchElement(n1, n2, parentComponent)
 		}
 	}
@@ -139,8 +138,6 @@ export function createRenderer (nodeOps) {
 	}
 
 	const patchChildren = (n1, n2, container, anchor, parentComponent) => {
-		console.log(n1, n2)
-		return
 		const c1 = n1.children
 		const c2 = n2.children
 		const { shapeFlag } = n2
@@ -167,7 +164,6 @@ export function createRenderer (nodeOps) {
 		} else {
 			if (preShapeFlag & ShapeFlag.ARRAY_CHILDREN) {
 				if (shapeFlag & ShapeFlag.ARRAY_CHILDREN) {
-					return
 					patchKeyedChildren(
 						c1,
 						c2,
@@ -197,8 +193,14 @@ export function createRenderer (nodeOps) {
 		}
 	}
 
-	const unmount = (vnode, parentCompoent) => {
+	const unmount = (vnode, parentCompoent, doRemove) => {
+		if (doRemove) {
+			remove(vnode)
+		}
+	}
 
+	const remove = vnode => {
+		hostRemove(vnode.el)
 	}
 
 	const patchKeyedChildren = (c1, c2, container, parentAnchor, parentComponent) => {
@@ -215,7 +217,7 @@ export function createRenderer (nodeOps) {
 			const n1 = c1[i]
 			const n2 = normalizeVNode(c2[i])
 
-			if (isSameTypeNode(n1, n2)) {
+			if (isSameVNodeType(n1, n2)) {
 				patch(
 					n1,
 					n2,
@@ -234,7 +236,7 @@ export function createRenderer (nodeOps) {
 		while(i <= e1 && i <= e2) {
 			const n1 = c1[e1]
 			const n2 = normalizeVNode(c2[e2])
-			if (isSameTypeNode(n1, n2)) {
+			if (isSameVNodeType(n1, n2)) {
 				patch(
 					n1,
 					n2,
@@ -280,7 +282,7 @@ export function createRenderer (nodeOps) {
 		// i = 0 e1 = 0 e2 = -1
 		else if (i > e2) {
 			while(i <= e1) {
-				unmount(c1[i], parentComponent)
+				unmount(c1[i], parentComponent, true)
 				i++
 			}
 		}
@@ -294,11 +296,11 @@ export function createRenderer (nodeOps) {
 			const s2 = i
 
 			// 5.1 build key:index map for new children
-			const newKeyToIndexMap = new Map()
+			const keyToNewIndexMap = new Map()
 			for (i = s2; i <= e2 + 1; i++) {
 				const nextChild = normalizeVNode(c2[i])
 				if (nextChild.key !== null) {
-					newKeyToIndexMap[nextChild.key] = i
+					keyToNewIndexMap.set(nextChild.key, i)
 				}
 			}
 
@@ -317,20 +319,20 @@ export function createRenderer (nodeOps) {
 			for(i = s1; i <= e1; i++) {
 				let prevChild = c1[i]
 				if (patched >= toBePatched) {
-					unmount(prevChild, parentComponent)
+					unmount(prevChild, parentComponent, true)
 					continue
 				}
 
 				let newIndex
 				let key = prevChild.key
 				if (key !== null) {
-					newIndex = newKeyToIndexMap.get(key)
+					newIndex = keyToNewIndexMap.get(key)
 				} else {
 					// key less
 					for(j = s2; j <= e2; j++) {
 						if (
 							newIndexToOldIndexList[j - s2] === 0 &&
-							isSameTypeNode(prevChild, c2[j])
+							isSameVNodeType(prevChild, c2[j])
 						) {
 							newIndex = j
 							break
@@ -339,7 +341,7 @@ export function createRenderer (nodeOps) {
 				}
 
 				if (newIndex === undefined) {
-					unmount(prevChild, parentComponent)
+					unmount(prevChild, parentComponent, true)
 				} else {
 					newIndexToOldIndexList[newIndex - s2] = i + 1 // TODO why + 1
 					if (newIndex > maxNewIndexSoFar) {
@@ -363,7 +365,7 @@ export function createRenderer (nodeOps) {
 				: []
 
 			j = increasingNewIndexSequence.length - 1
-			for (i = toBePatched - 1; i >= 0; i++) {
+			for (i = toBePatched - 1; i >= 0; i--) {
 				const nextIndex = s2 + i
 				const nextChild = c2[nextIndex]
 
