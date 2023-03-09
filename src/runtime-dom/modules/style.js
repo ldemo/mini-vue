@@ -1,13 +1,24 @@
+import { isString } from "../../share"
+
 export const patchStyle = (el, prev, next) => {
 	const style = el.style
-	if (!next) return
+	const isCssString = isString(style)
 
-	for(const key in (prev || {})) {
-		next[key] === null && setStyle(style, key, '')
-	}
-	
-	for(const key in next) {
-		setStyle(style, key, next[key])
+	if (next && !isCssString) {
+		if(prev && !isString(prev)) {
+			for (const key in prev) {
+				next[key] === null && setStyle(style, key, '')
+			}
+		}
+		for (const key in next) {
+			setStyle(style, key, next[key])
+		}
+	} else {
+		if (isCssString) {
+			style.cssText = next
+		} else if (prev) {
+			el.removeAttribute('style')
+		}
 	}
 }
 
