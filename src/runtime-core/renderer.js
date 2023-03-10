@@ -2,6 +2,7 @@ import { ReactiveEffect } from "../reactive"
 import { ShapeFlag } from "../share"
 import { createAppAPI } from "./apiCreateApp"
 import { setupComponent } from "./component"
+import { normalizePropsOption } from "./componentProps"
 import { renderComponentRoot } from "./componentRenderUtil"
 import { isSameVNodeType, normalizeChildren, normalizeVNode, Text } from "./vnode"
 
@@ -67,6 +68,8 @@ export function createRenderer (nodeOps) {
 			vnode,
 			type,
 			parent: container,
+
+			propsOptions: normalizePropsOption(type),
 
 			ctx: {},
 			data: {},

@@ -1,4 +1,5 @@
-import { hasOwn, ShapeFlag } from "../share"
+import { reactive } from "../reactive"
+import { camelize, hasOwn, ShapeFlag } from "../share"
 
 export const setupComponent = (instance) => {
 	const { props, children } = instance.vnode
@@ -32,7 +33,7 @@ function setupStatefulComponent(instance) {
 	}
 }
 
-function handleSetupResult(instance, setupResult) {
+function handleSetupResult(instance, setupResult = {}) {
 	instance.setupState = setupResult
 	finishSetupComponent(instance)
 }
@@ -44,5 +45,38 @@ function finishSetupComponent(instance) {
 	}
 }
 
-function initProps() {}
+function initProps(instance, rawProps = {}) {
+
+	const props = {}
+	const attrs = {}
+	setFullProps(instance, rawProps, props, attrs)
+
+	instance.attrs = attrs
+	instance.props = reactive(props)
+}
+
 function initSlots() {}
+
+const setFullProps = (instance, rawProps, props, attrs) => {
+	const [options] = instance.propsOptions
+
+	let hasAttrsChanged = false
+
+	if (rawProps) {
+		for(const key in rawProps) {
+			const value = rawProps[key]
+
+			let camelKey
+			if (options && hasOwn(options, (camelKey = camelize(key)))) {
+				props[camelKey] = value
+			} else {
+				if (!(key in attrs) || value !== attrs[key]) {
+          attrs[key] = value
+          hasAttrsChanged = true
+        }
+			}
+		}
+	}
+
+	return hasAttrsChanged
+}

@@ -5,7 +5,7 @@ export const Text = Symbol('Text')
 export function createVNode(
 	type,
 	props,
-	children
+	children = null
 ) {
 
 	const shapeFlag = isString(type)
@@ -40,6 +40,7 @@ export function normalizeChildren(vnode, children) {
 		type = ShapeFlag.TEXT_CHILDREN
 	}
 
+	vnode.children = children
 	vnode.shapeFlag |= type
 }
 

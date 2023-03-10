@@ -12,6 +12,15 @@ export const ShapeFlag = {
 	ELEMENT: 1,
 	STATEFUL_COMPONENT: 1 << 2,
 	TEXT_CHILDREN: 1 << 3,
-	ARRAY_CHILDREN: 1 << 4
+	ARRAY_CHILDREN: 1 << 4,
+	COMPONENT: ShapeFlags.STATEFUL_COMPONENT
 }
+
+/**
+ * @private
+ */
+export const camelize = (str) => {
+  return str.replace(/-(\w)/g, (_, c) => (c ? c.toUpperCase() : ''))
+}
+
 window.ShapeFlag = ShapeFlag
