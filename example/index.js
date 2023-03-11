@@ -2,6 +2,17 @@ import { reactive } from "../src/reactive"
 import { h } from "../src/runtime-core"
 import { createApp } from '../src/runtime-dom'
 
+const Comp = {
+	props: ['user'],
+	setup(props) {
+		console.log(props.user.name)
+	},
+
+	render() {
+		return h('div', { style: { padding: '20px' } }, this.user.name)
+	}
+}
+
 createApp({
 	setup() {
 		let user = reactive({
@@ -16,12 +27,18 @@ createApp({
 		}
 	},
 	render() {
-		return !this.shouldUpdate.value
-			? h('div', {
-					onClick: () => this.shouldUpdate.value = true
-				}, [1, 2, 3, 4].map(v => h('div', { key: v }, v)))
-			: h('div', {
-					onClick: () => this.shouldUpdate.value = false
-				}, [1, 2, 5, 6, 3].map(v => h('div', { key: v }, v)))
+		return h(
+			'div',
+			{ padding: '20px' },
+			h(
+				Comp,
+				{
+					user: this.user,
+					id: '3',
+					onClick: () => { console.log(this.user) }
+				}
+			)
+		)
+			
 	}
 }).mount('#root')

@@ -1,5 +1,6 @@
 import { reactive } from "../reactive"
 import { camelize, hasOwn, ShapeFlag } from "../share"
+import { PublicInstanceProxyHandler } from "./componentPublicInstance"
 
 export const setupComponent = (instance) => {
 	const { props, children } = instance.vnode
@@ -15,14 +16,7 @@ function setupStatefulComponent(instance) {
 	const component = instance.type
 	const { setup } = component
 	
-	instance.proxy = new Proxy(instance.ctx, {
-		get({ _: instance }, key) {
-			const { setupState } = instance
-			if (hasOwn(setupState, key)) {
-				return setupState[key]
-			}
-		}
-	})
+	instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandler)
 
 	if (setup) {
 		const setupContext = {}
