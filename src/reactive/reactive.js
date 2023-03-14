@@ -3,13 +3,12 @@ const ReactiveFlags = {
 	RAW: '__v_raw'
 }
 const proxyMap = new WeakMap()
-
 export const reactive = (target) => {
 	if (proxyMap.get(target)) {
 		return proxyMap.get(target)
 	}
 
-	return proxyMap[target] = new Proxy(target, {
+	let proxy = new Proxy(target, {
 		get(target, key, receiver) {
 			if (key === ReactiveFlags.RAW) {
       	return target
@@ -26,6 +25,9 @@ export const reactive = (target) => {
 			return res
 		}
 	})
+
+	proxyMap.set(target, proxy)
+	return proxy
 }
 
 export const toRaw = (observed) => observed && observed[ReactiveFlags.RAW] || observed
