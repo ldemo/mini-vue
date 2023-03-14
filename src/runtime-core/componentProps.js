@@ -1,4 +1,6 @@
-import { camelize, isArray } from "../share"
+import { toRaw } from "../reactive/reactive"
+import { camelize, hasOwn, isArray } from "../share"
+import { setFullProps } from "./component"
 
 export function normalizePropsOption (comp) {
 	const raw = comp.props
@@ -16,6 +18,20 @@ export function normalizePropsOption (comp) {
 		}
 	}
 
-
 	return [normalized]
+}
+
+export const updateProps = (instance, nextProps, prevProps) => {
+	const { props, attrs } = instance
+
+	const rawCurrentProps = toRaw(props)
+
+	// props
+	setFullProps(instance, nextProps, props, attrs)
+
+	for (const key in rawCurrentProps) {
+		if (!nextProps || !hasOwn(nextProps, key)) {
+			delete props[key]
+		}
+	}
 }

@@ -51,7 +51,7 @@ function initProps(instance, rawProps = {}) {
 
 function initSlots() {}
 
-const setFullProps = (instance, rawProps, props, attrs) => {
+export const setFullProps = (instance, rawProps, props, attrs) => {
 	const [options] = instance.propsOptions
 
 	let hasAttrsChanged = false

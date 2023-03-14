@@ -2,8 +2,8 @@ import { ReactiveEffect } from "../reactive"
 import { ShapeFlag } from "../share"
 import { createAppAPI } from "./apiCreateApp"
 import { setupComponent } from "./component"
-import { normalizePropsOption } from "./componentProps"
-import { renderComponentRoot } from "./componentRenderUtil"
+import { normalizePropsOption, updateProps } from "./componentProps"
+import { renderComponentRoot, shouldUpdateComponent } from "./componentRenderUtil"
 import { Fragment, isSameVNodeType, normalizeChildren, normalizeVNode, Text } from "./vnode"
 
 export function createRenderer (nodeOps) {
@@ -123,12 +123,22 @@ export function createRenderer (nodeOps) {
 	const setupRenderEffect = (instance, vnode, container, anchor) => {
 		const componentUpdateFn = () => {
 			if (!instance.isMounted) {
-
 				const subTree = instance.subTree = renderComponentRoot(instance)
 				patch(null, subTree, container, anchor)
 				vnode.el = subTree.el
 				instance.isMounted = true
 			} else {
+				// updateComponent
+        // This is triggered by mutation of component's own state (next: null)
+        // OR parent calling processComponent (next: VNode)
+				let { next, vnode } = instance
+
+				if (next) {
+					next.el = vnode.el
+					updateComponentPreRender(instance, next)
+				} else {
+					next = vnode
+				}
 				const nextTree = renderComponentRoot(instance)
 				const prevTree = instance.subTree
         instance.subTree = nextTree
@@ -139,6 +149,7 @@ export function createRenderer (nodeOps) {
 					hostNextSibling(prevTree.anchor || prevTree.el),
 					instance
 				)
+				next.el = nextTree.el
 			}
 		}
 
@@ -148,8 +159,25 @@ export function createRenderer (nodeOps) {
 		update()
 	}
 
-	const updateComponent = (n1, n2) => {
+	const updateComponentPreRender = (instance, nextVNode) => {
+		nextVNode.component = instance
+		const prevProps = instance.vnode.props
+		instance.vnode = nextVNode
+		instance.next = null
 
+		updateProps(instance, nextVNode.props, prevProps)
+	}
+
+	const updateComponent = (n1, n2) => {
+		const instance = n2.component = n1.component
+
+		if (shouldUpdateComponent(n1, n2)) {
+			instance.next = n2
+			instance.update()
+		} else {
+			n2.el = n1.el
+			instance.vnode = n2
+		}
 	}
 
 	const processElement = (n1, n2, container, anchor, parentComponent) => {
