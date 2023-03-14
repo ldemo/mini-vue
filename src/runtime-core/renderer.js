@@ -4,7 +4,7 @@ import { createAppAPI } from "./apiCreateApp"
 import { setupComponent } from "./component"
 import { normalizePropsOption } from "./componentProps"
 import { renderComponentRoot } from "./componentRenderUtil"
-import { isSameVNodeType, normalizeChildren, normalizeVNode, Text } from "./vnode"
+import { Fragment, isSameVNodeType, normalizeChildren, normalizeVNode, Text } from "./vnode"
 
 export function createRenderer (nodeOps) {
 
@@ -22,7 +22,7 @@ export function createRenderer (nodeOps) {
     setScopeId: hostSetScopeId,
 	} = nodeOps
 
-	const patch = (n1, n2, container, anchor) => {
+	const patch = (n1, n2, container, anchor, parentComponent) => {
 		if (n1 === n2) return
 
 		const { type, shapeFlag } = n2
@@ -30,11 +30,14 @@ export function createRenderer (nodeOps) {
 			case Text:
 				processText(n1, n2, container, anchor)
 				break
+			case Fragment:
+				processFragment(n1, n2, container, anchor, parentComponent)
+				break
 			default:
 				if (shapeFlag & ShapeFlag.ELEMENT) {
-					processElement(n1, n2, container, anchor)
+					processElement(n1, n2, container, anchor, parentComponent)
 				} else if (shapeFlag & ShapeFlag.STATEFUL_COMPONENT) {
-					processComponent(n1, n2, container, anchor)
+					processComponent(n1, n2, container, anchor, parentComponent)
 				}
 		}
 	}
@@ -53,11 +56,36 @@ export function createRenderer (nodeOps) {
 		}
 	}
 
-	const processComponent = (n1, n2, container, anchor) => {
-		if (!n1) {
-			mountComponent(n2, container, anchor)
+	const processFragment = (n1, n2, container, anchor, parentComponent) => {
+		const fragmentStartAnchor = n2.el = n1 ? n1.el : hostCreateText('')
+		const fragmentEndAnchor = n2.anchor = n1 ? n1.anchor : hostCreateText('')
+
+		if (n1 == null) {
+			hostInsert(fragmentStartAnchor, container, anchor)
+			hostInsert(fragmentEndAnchor, container, anchor)
+
+			mountChildren(
+				n2.children,
+				container,
+				fragmentEndAnchor,
+				parentComponent
+			)
 		} else {
-			updateComponent(n1, n2, container, anchor)
+			patchChildren(
+				n1.children,
+				n2.children,
+				container,
+				fragmentEndAnchor,
+				parentComponent
+			)
+		}
+	}
+
+	const processComponent = (n1, n2, container, anchor, parentComponent) => {
+		if (!n1) {
+			mountComponent(n2, container, anchor, parentComponent)
+		} else {
+			updateComponent(n1, n2)
 		}
 	}
 
@@ -107,8 +135,9 @@ export function createRenderer (nodeOps) {
 				patch(
 					prevTree,
 					nextTree,
-					container,
-					anchor
+					hostParentNode(prevTree.el),
+					hostNextSibling(prevTree.anchor || prevTree.el),
+					instance
 				)
 			}
 		}
@@ -119,13 +148,13 @@ export function createRenderer (nodeOps) {
 		update()
 	}
 
-	const updateComponent = (n1, n2, container, anchor) => {
+	const updateComponent = (n1, n2) => {
 
 	}
 
 	const processElement = (n1, n2, container, anchor, parentComponent) => {
 		if (!n1) {
-			mountElement(n2, container, anchor)
+			mountElement(n2, container, anchor, parentComponent)
 		} else {
 			patchElement(n1, n2, parentComponent)
 		}
@@ -183,7 +212,7 @@ export function createRenderer (nodeOps) {
 				}
 
 				if (shapeFlag & ShapeFlag.ARRAY_CHILDREN) {
-					mountChildren(c2, container, anchor)
+					mountChildren(c2, container, anchor, parentComponent)
 				}
 
 			}
@@ -196,7 +225,7 @@ export function createRenderer (nodeOps) {
 		}
 	}
 
-	const unmount = (vnode, parentCompoent, doRemove) => {
+	const unmount = (vnode, parentComponent, doRemove) => {
 		if (doRemove) {
 			remove(vnode)
 		}
@@ -225,7 +254,8 @@ export function createRenderer (nodeOps) {
 					n1,
 					n2,
 					container,
-					null
+					null,
+					parentComponent
 				)
 				i++
 			} else {
@@ -244,7 +274,8 @@ export function createRenderer (nodeOps) {
 					n1,
 					n2,
 					container,
-					null
+					null,
+					parentComponent
 				)
 				e1--
 				e2--
@@ -269,7 +300,8 @@ export function createRenderer (nodeOps) {
 						null,
 						n2,
 						container,
-						anchor
+						anchor,
+						parentComponent
 					)
 					i++
 				}
@@ -356,7 +388,8 @@ export function createRenderer (nodeOps) {
 						prevChild,
 						c2[newIndex],
 						container,
-						null
+						null,
+						parentComponent
 					)
 					patched++
 				}
@@ -379,7 +412,8 @@ export function createRenderer (nodeOps) {
 						null,
 						nextChild,
 						container,
-						anchor
+						anchor,
+						parentComponent
 					)
 				} else if (moved) {
 					if (j < 0 || i !== increasingNewIndexSequence[j]) {
@@ -416,7 +450,7 @@ export function createRenderer (nodeOps) {
 
 	}
 
-	const mountElement = (vnode, container, anchor) => {
+	const mountElement = (vnode, container, anchor, parentComponent) => {
 
 		const { type, shapeFlag, children, props } = vnode
 		let el = vnode.el = hostCreateElement(type)
@@ -424,7 +458,7 @@ export function createRenderer (nodeOps) {
 		if (shapeFlag & ShapeFlag.TEXT_CHILDREN) {
 			hostSetElementText(el, children)
 		} else if (shapeFlag & ShapeFlag.ARRAY_CHILDREN) {
-			mountChildren(children, el, null)
+			mountChildren(children, el, null, parentComponent)
 		}
 
 		for (const key in (props || {})) {
@@ -439,10 +473,10 @@ export function createRenderer (nodeOps) {
 		hostInsert(vnode.el, container, anchor)
 	}
 
-	const mountChildren = (children, el, anchor) => {
+	const mountChildren = (children, el, anchor, parentComponent) => {
 		for(let i = 0; i < children.length; i++) {
-			let child = normalizeVNode(children[i])
-			patch(null, child, el, anchor)
+			let child = children[i] = normalizeVNode(children[i])
+			patch(null, child, el, anchor, parentComponent)
 		}
 	}
 

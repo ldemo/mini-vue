@@ -9,7 +9,7 @@ const Comp = {
 	},
 
 	render() {
-		return h('div', { style: { padding: '20px' } }, this.user.name)
+		return h('div', { style: { padding: '10px' } }, this.user.name)
 	}
 }
 
@@ -18,12 +18,12 @@ createApp({
 		let user = reactive({
 			name: 'hello world'
 		})
-		let shouldUpdate = reactive({
-			value: false
-		})
+		const changeName = () => {
+			user.name = 'name changed'
+		}
 		return {
 			user,
-			shouldUpdate
+			changeName
 		}
 	},
 	render() {
@@ -35,7 +35,7 @@ createApp({
 				{
 					user: this.user,
 					id: '3',
-					onClick: () => { console.log(this.user) }
+					onClick: this.changeName
 				}
 			)
 		)

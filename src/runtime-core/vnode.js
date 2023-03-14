@@ -2,6 +2,7 @@ import { isArray, isNumber, isObject, isOn, isString, ShapeFlag } from "../share
 import { normalizeClass, normalizeStyle } from "../share/normalizeProp"
 
 export const Text = Symbol('Text')
+export const Fragment = Symbol('Fragment')
 
 export function createVNode(
 	type,
@@ -16,6 +17,7 @@ export function createVNode(
 			: 0
 
 	const vnode = {
+		__v_isVNode: true,
 		key: props && props.key || null,
 		type,
 		shapeFlag,
@@ -27,6 +29,8 @@ export function createVNode(
 
 	return vnode
 }
+
+export const isVNode = (vnode) => !!vnode.__v_isVNode
 
 export function createTextVNode(text) {
 	return createVNode(Text, null, text)
@@ -48,6 +52,8 @@ export function normalizeChildren(vnode, children) {
 export function normalizeVNode(child) {
 	if (isObject(child)) {
 		return child
+	} else if (isArray(child)) {
+		createVNode(Fragment, null, child.slice())
 	} else {
 		return createVNode(Text, null, String(child))
 	}
