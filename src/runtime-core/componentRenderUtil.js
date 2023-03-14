@@ -1,9 +1,9 @@
 import { ShapeFlag } from "../share"
-import { cloneVNode } from "./vnode"
+import { cloneVNode, normalizeVNode } from "./vnode"
 
 export function renderComponentRoot(instance) {
 	const { render, proxy, attrs } = instance
-	let result = render.call(proxy)
+	let result = normalizeVNode(render.call(proxy))
 
 	if (attrs) {
 		const keys = Object.keys(attrs)

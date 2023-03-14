@@ -1,5 +1,4 @@
-import { isArray } from "../share";
-import { createVNode } from "./vnode";
+import { createVNode, isVNode } from "./vnode";
 
 export function h(type, props, children) {
 	return createVNode(
@@ -7,8 +6,8 @@ export function h(type, props, children) {
 		props,
 		children === undefined
 			? undefined
-			: isArray(children)
-				? children
-				: [children]
+			: isVNode(children)
+				? [children]
+				: children
 		)
 }
