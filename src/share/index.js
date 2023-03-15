@@ -16,11 +16,12 @@ export const ShapeFlag = {
 	COMPONENT: 1 << 2
 }
 
-/**
- * @private
- */
 export const camelize = (str) => {
   return str.replace(/-(\w)/g, (_, c) => (c ? c.toUpperCase() : ''))
 }
+
+export const capitalize = str => str.charAt(0).toUpperCase() + str.slice(1)
+
+export const toHandlerKey = str => str ? `on${capitalize(str)}` : ``
 
 window.ShapeFlag = ShapeFlag

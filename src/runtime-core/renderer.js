@@ -2,6 +2,7 @@ import { ReactiveEffect } from "../reactive"
 import { ShapeFlag } from "../share"
 import { createAppAPI } from "./apiCreateApp"
 import { setupComponent } from "./component"
+import { emit, normalizeEmitsOptions } from "./componentEmits"
 import { normalizePropsOption, updateProps } from "./componentProps"
 import { renderComponentRoot, shouldUpdateComponent } from "./componentRenderUtil"
 import { Fragment, isSameVNodeType, normalizeChildren, normalizeVNode, Text } from "./vnode"
@@ -98,6 +99,7 @@ export function createRenderer (nodeOps) {
 			parent: container,
 
 			propsOptions: normalizePropsOption(type),
+			emitsOptions: normalizeEmitsOptions(type),
 
 			ctx: {},
 			data: {},
@@ -105,10 +107,13 @@ export function createRenderer (nodeOps) {
 			attrs: {},
 			slots: {},
 			setupState: {},
-			setupContext: null
+			setupContext: null,
+
+			emit: null
 		}
 
 		instance.ctx._ = instance
+		instance.emit = emit.bind(null, instance)
 
 		setupComponent(instance)
 

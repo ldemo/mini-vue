@@ -20,7 +20,9 @@ function setupStatefulComponent(instance) {
 	instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandler)
 
 	if (setup) {
-		const setupContext = {}
+		const setupContext = {
+			emit: instance.emit
+		}
 
 		pauseTracking()
 		const setupResult = setup(instance.props, setupContext)
