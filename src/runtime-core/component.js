@@ -1,6 +1,8 @@
 import { reactive } from "../reactive"
 import { pauseTracking, resetTracking } from "../reactive/effect"
 import { camelize, hasOwn, ShapeFlag } from "../share"
+import { emit, normalizeEmitsOptions } from "./componentEmits"
+import { normalizePropsOptions } from "./componentProps"
 import { PublicInstanceProxyHandler } from "./componentPublicInstance"
 
 export const setupComponent = (instance) => {
@@ -80,4 +82,34 @@ export const setFullProps = (instance, rawProps, props, attrs) => {
 	}
 
 	return hasAttrsChanged
+}
+
+let uid = 0
+
+export const createComponentInstance = (vnode, parent) => {
+	const type = vnode.type
+	const instance = {
+		uid: uid++,
+		vnode,
+		type,
+		parent,
+
+		propsOptions: normalizePropsOptions(type),
+		emitsOptions: normalizeEmitsOptions(type),
+
+		ctx: {},
+		data: {},
+		props: {},
+		attrs: {},
+		slots: {},
+		setupState: {},
+		setupContext: null,
+
+		emit: null
+	}
+
+	instance.ctx._ = instance
+	instance.emit = emit.bind(null, instance)
+
+	return instance
 }

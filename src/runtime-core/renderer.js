@@ -1,11 +1,10 @@
 import { ReactiveEffect } from "../reactive"
 import { ShapeFlag } from "../share"
 import { createAppAPI } from "./apiCreateApp"
-import { setupComponent } from "./component"
-import { emit, normalizeEmitsOptions } from "./componentEmits"
-import { normalizePropsOption, updateProps } from "./componentProps"
+import { createComponentInstance, setupComponent } from "./component"
+import { updateProps } from "./componentProps"
 import { renderComponentRoot, shouldUpdateComponent } from "./componentRenderUtil"
-import { Fragment, isSameVNodeType, normalizeChildren, normalizeVNode, Text } from "./vnode"
+import { Fragment, isSameVNodeType, normalizeVNode, Text } from "./vnode"
 
 export function createRenderer (nodeOps) {
 
@@ -91,29 +90,8 @@ export function createRenderer (nodeOps) {
 	}
 
 	const mountComponent = (vnode, container, anchor) => {
-		const { type } = vnode
 
-		const instance = vnode.component = {
-			vnode,
-			type,
-			parent: container,
-
-			propsOptions: normalizePropsOption(type),
-			emitsOptions: normalizeEmitsOptions(type),
-
-			ctx: {},
-			data: {},
-			props: {},
-			attrs: {},
-			slots: {},
-			setupState: {},
-			setupContext: null,
-
-			emit: null
-		}
-
-		instance.ctx._ = instance
-		instance.emit = emit.bind(null, instance)
+		const instance = vnode.component = createComponentInstance(vnode, container)
 
 		setupComponent(instance)
 
