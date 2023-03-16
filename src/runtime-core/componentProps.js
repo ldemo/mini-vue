@@ -2,7 +2,7 @@ import { toRaw } from "../reactive/reactive"
 import { camelize, hasOwn, isArray } from "../share"
 import { setFullProps } from "./component"
 
-export function normalizePropsOption (comp) {
+export function normalizePropsOptions (comp) {
 	const raw = comp.props
 	const normalized = {}
 
