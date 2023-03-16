@@ -3,7 +3,7 @@ import { h } from "../src/runtime-core"
 import { createApp } from '../src/runtime-dom'
 
 const Comp = {
-	props: ['count'],
+	props: ['count', 'msg'],
 	emits: ['subCount'],
 	setup(props, { emit }) {
 		setTimeout(() => {
@@ -14,17 +14,20 @@ const Comp = {
 
 	render() {
 		console.log('comp render')
-		return h('div', { style: { padding: '10px' } }, `点击次数 ${this.count}`)
+		return h('div', { style: { padding: '10px' } }, `${this.msg.value} 点击次数 ${this.count}`)
 	}
 }
 
 createApp({
 	setup() {
 		let user = reactive({
-			count: 0
+			count: 1
 		})
-		const addCount = () => {
-			user.count++
+		let msg = reactive({
+			value: 'hello'
+		})
+		const handleCompClick = () => {
+			msg.value = 'hello' + ++user.count
 		}
 		const subCount = () => {
 			console.log('sub count')
@@ -32,7 +35,8 @@ createApp({
 		}
 		return {
 			user,
-			addCount,
+			msg,
+			handleCompClick,
 			subCount
 		}
 	},
@@ -40,14 +44,17 @@ createApp({
 		return h(
 			'div',
 			{ padding: '20px', id: '1' },
-			h(
-				Comp,
-				{
-					count: this.user.count,
-					onClick: () => this.user.count++,
-					onSubCount: this.subCount
-				}
-			)
+			[
+				h(
+					Comp,
+					{
+						count: this.user.count,
+						msg: this.msg,
+						onClick: this.handleCompClick,
+						onSubCount: this.subCount
+					}
+				)
+			]
 		)
 			
 	}

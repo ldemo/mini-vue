@@ -4,6 +4,7 @@ import { createAppAPI } from "./apiCreateApp"
 import { createComponentInstance, setupComponent } from "./component"
 import { updateProps } from "./componentProps"
 import { renderComponentRoot, shouldUpdateComponent } from "./componentRenderUtil"
+import { invalidateJob, queueJob } from "./scheduler"
 import { Fragment, isSameVNodeType, normalizeVNode, Text } from "./vnode"
 
 export function createRenderer (nodeOps) {
@@ -136,8 +137,9 @@ export function createRenderer (nodeOps) {
 			}
 		}
 
-		const effect = new ReactiveEffect(componentUpdateFn)
 		const update = instance.update = () => effect.run()
+		update.id = instance.uid
+		const effect = new ReactiveEffect(componentUpdateFn, () => queueJob(update))
 
 		update()
 	}
@@ -156,6 +158,9 @@ export function createRenderer (nodeOps) {
 
 		if (shouldUpdateComponent(n1, n2)) {
 			instance.next = n2
+			// in case the child component is also queued, remove it to avoid
+			// double updating the same child component in the same flush.
+			invalidateJob(instance.update)
 			instance.update()
 		} else {
 			n2.el = n1.el
