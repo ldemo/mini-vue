@@ -34,15 +34,20 @@ export const trigger = (target, key) => {
 	const deps = depsMap.get(key)
 	if (!deps) return
 
-	deps.forEach(v => v !== activeEffect && v.run())
+	deps.forEach(v => {
+		if (v === activeEffect) return
+		v.scheduler ? v.scheduler() : v.run()
+	})
 }
 
 export class ReactiveEffect {
 	deps = []
 	_fn = null
+	scheduler = null
 
-	constructor(fn) {
+	constructor(fn, scheduler) {
 		this._fn = fn
+		this.scheduler = scheduler
 	}
 
 	run() {
