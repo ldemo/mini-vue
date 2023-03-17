@@ -7,7 +7,9 @@ export const Fragment = Symbol('Fragment')
 export function createVNode(
 	type,
 	props,
-	children = null
+	children = null,
+	patchFlag,
+	dynamicProps
 ) {
 
 	const shapeFlag = isString(type)
@@ -16,16 +18,47 @@ export function createVNode(
 			? ShapeFlag.STATEFUL_COMPONENT
 			: 0
 
+	return createBaseVNode(
+		type,
+		props,
+		children,
+		patchFlag,
+		dynamicProps,
+		shapeFlag,
+		true
+	)
+}
+
+export const createBaseVNode = (
+	type,
+	props,
+	children,
+	patchFlag = 0,
+	dynamicProps = null,
+	shapeFlag,
+	isBlockNode
+) => {
 	const vnode = {
 		__v_isVNode: true,
 		key: props && props.key || null,
 		type,
 		shapeFlag,
 		props,
-		children
+		children,
+
+		patchFlag,
+		dynamicProps
 	}
 
 	normalizeChildren(vnode, children)
+
+	if (
+		!isBlockNode &&
+		currentBlock &&
+		vnode.patchFlag > 0
+	) {
+		currentBlock.push(vnode)
+	}
 
 	return vnode
 }
@@ -95,4 +128,45 @@ export const mergeProps = (...args) => {
 		}
 	}
 	return ret
+}
+
+export const blockStack = []
+export let currentBlock = null
+
+export const openBlock = (disableTracking = false) => {
+	blockStack.push(currentBlock = disableTracking ? null : [])
+}
+
+export const closeBlock = () => {
+	blockStack.pop()
+	currentBlock = blockStack[blockStack.length - 1] || null
+}
+
+export const setupBlock = (vnode) => {
+	vnode.dynamicChildren = currentBlock || null
+
+	closeBlock()
+	if (currentBlock) {
+		currentBlock.push(vnode)
+	}
+
+	return vnode
+}
+
+export const createBlock = (
+	type,
+	props,
+	children,
+	patchFlag,
+	dynamicProps
+) => {
+	return setupBlock(
+		createVNode(
+			type,
+			props,
+			children,
+			patchFlag,
+			dynamicProps
+		)
+	)
 }

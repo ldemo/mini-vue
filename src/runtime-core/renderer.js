@@ -1,5 +1,6 @@
 import { ReactiveEffect } from "../reactive"
 import { ShapeFlag } from "../share"
+import { PatchFlag } from "../share/patchFlag"
 import { createAppAPI } from "./apiCreateApp"
 import { createComponentInstance, setupComponent } from "./component"
 import { updateProps } from "./componentProps"
@@ -178,11 +179,69 @@ export function createRenderer (nodeOps) {
 
 	const patchElement = (n1, n2, parentComponent) => {
 		const el = n2.el = n1.el
+		const { patchFlag, dynamicChildren} = n2
 		const oldProps = n1.props
 		const newProps = n2.props
 
-		patchChildren(n1, n2, el, null, parentComponent)
-		patchProps(el, n2, oldProps, newProps)
+		if (dynamicChildren) {
+			patchBlockChildren(
+				n1.dynamicChildren,
+				dynamicChildren,
+				el,
+				parentComponent
+			)
+		} else {
+			patchChildren(n1, n2, el, null, parentComponent)
+		}
+
+		if (patchFlag > 0) {
+			if (patchFlag & PatchFlag.FULL_PROPS) {
+				patchProps(el, n2, oldProps, newProps)
+			} else {
+				if (patchFlag & PatchFlag.CLASS) {
+					if (oldProps.class !== newProps.class) {
+						hostPatchProp(el, 'class', null, newProps.class)
+					}
+				}
+
+				if (patchFlag & PatchFlag.STYLE) {
+					hostPatchProp(el, 'style', oldProps.style, newProps.style)
+				}
+
+				if (patchFlag & PatchFlag.PROPS) {
+					const propsToUpdate = n2.dynamicProps
+					for (let i = 0; i < propsToUpdate.length; i++) {
+						const key = propsToUpdate[i]
+						const prev = oldProps[key]
+						const next = newProps[key]
+						if (prev !== next) {
+							hostPatchProp(
+								el,
+								key,
+								prev,
+								next
+							)
+						}
+					}
+				}
+			}
+		}
+
+	}
+
+	const patchBlockChildren = (c1, c2, container, parentComponent) => {
+		for (let i = 0; i < c2.length; i++) {
+			const oldVNode = c1[i]
+			const newVNode = c2[i]
+
+			patch(
+				oldVNode,
+				newVNode,
+				container,
+				null,
+				parentComponent
+			)
+		}
 	}
 
 	const patchChildren = (n1, n2, container, anchor, parentComponent) => {
