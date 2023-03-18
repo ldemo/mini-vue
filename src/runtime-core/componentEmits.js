@@ -1,4 +1,4 @@
-import { extend, isArray, toHandlerKey } from "../share"
+import { extend, isArray, isOn, toHandlerKey } from "../share"
 
 export const normalizeEmitsOptions = (comp) => {
 
@@ -22,4 +22,19 @@ export function emit (instance, event, ...rawArgs) {
 	let handler = props[toHandlerKey(event)]
 	rawArgs ? handler(rawArgs) : handler()
 
+}
+
+export function isEmitListener(
+  options,
+  key
+) {
+  if (!options || !isOn(key)) {
+    return false
+  }
+
+  key = key.slice(2)
+  return (
+    hasOwn(options, key[0].toLowerCase() + key.slice(1)) ||
+    hasOwn(options, key)
+  )
 }

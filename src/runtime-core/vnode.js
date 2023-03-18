@@ -9,7 +9,8 @@ export function createVNode(
 	props,
 	children = null,
 	patchFlag,
-	dynamicProps
+	dynamicProps,
+	isBlockNode = false
 ) {
 
 	const shapeFlag = isString(type)
@@ -25,7 +26,7 @@ export function createVNode(
 		patchFlag,
 		dynamicProps,
 		shapeFlag,
-		true
+		isBlockNode
 	)
 }
 
@@ -166,7 +167,8 @@ export const createBlock = (
 			props,
 			children,
 			patchFlag,
-			dynamicProps
+			dynamicProps,
+			true
 		)
 	)
 }

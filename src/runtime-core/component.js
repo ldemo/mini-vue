@@ -1,6 +1,6 @@
 import { reactive } from "../reactive"
 import { pauseTracking, resetTracking } from "../reactive/effect"
-import { camelize, hasOwn, ShapeFlag } from "../share"
+import { camelize, hasOwn, isFunction, ShapeFlag } from "../share"
 import { emit, normalizeEmitsOptions } from "./componentEmits"
 import { normalizePropsOptions } from "./componentProps"
 import { PublicInstanceProxyHandler } from "./componentPublicInstance"
@@ -27,6 +27,7 @@ function setupStatefulComponent(instance) {
 		}
 
 		pauseTracking()
+		console.log(instance)
 		const setupResult = setup(instance.props, setupContext)
 		resetTracking()
 		
@@ -37,7 +38,11 @@ function setupStatefulComponent(instance) {
 }
 
 function handleSetupResult(instance, setupResult = {}) {
-	instance.setupState = setupResult
+	if (isFunction(setupResult)) {
+		instance.render = setupResult
+	} else {
+		instance.setupState = setupResult
+	}
 	finishSetupComponent(instance)
 }
 

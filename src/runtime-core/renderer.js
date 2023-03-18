@@ -24,7 +24,14 @@ export function createRenderer (nodeOps) {
     setScopeId: hostSetScopeId,
 	} = nodeOps
 
-	const patch = (n1, n2, container, anchor, parentComponent) => {
+	const patch = (
+		n1,
+		n2,
+		container,
+		anchor,
+		parentComponent,
+		optimized = !!n2.dynamicChildren
+	) => {
 		if (n1 === n2) return
 
 		const { type, shapeFlag } = n2
@@ -33,13 +40,20 @@ export function createRenderer (nodeOps) {
 				processText(n1, n2, container, anchor)
 				break
 			case Fragment:
-				processFragment(n1, n2, container, anchor, parentComponent)
+				processFragment(n1, n2, container, anchor, parentComponent, optimized)
 				break
 			default:
 				if (shapeFlag & ShapeFlag.ELEMENT) {
-					processElement(n1, n2, container, anchor, parentComponent)
+					processElement(
+						n1,
+						n2,
+						container,
+						anchor,
+						parentComponent,
+						optimized
+					)
 				} else if (shapeFlag & ShapeFlag.STATEFUL_COMPONENT) {
-					processComponent(n1, n2, container, anchor, parentComponent)
+					processComponent(n1, n2, container, anchor, parentComponent, optimized)
 				}
 		}
 	}
@@ -58,9 +72,18 @@ export function createRenderer (nodeOps) {
 		}
 	}
 
-	const processFragment = (n1, n2, container, anchor, parentComponent) => {
+	const processFragment = (
+		n1,
+		n2,
+		container,
+		anchor,
+		parentComponent,
+		optimized
+	) => {
 		const fragmentStartAnchor = n2.el = n1 ? n1.el : hostCreateText('')
 		const fragmentEndAnchor = n2.anchor = n1 ? n1.anchor : hostCreateText('')
+
+		const { patchFlag, dynamicChildren } = n2
 
 		if (n1 == null) {
 			hostInsert(fragmentStartAnchor, container, anchor)
@@ -73,27 +96,54 @@ export function createRenderer (nodeOps) {
 				parentComponent
 			)
 		} else {
-			patchChildren(
-				n1.children,
-				n2.children,
-				container,
-				fragmentEndAnchor,
-				parentComponent
-			)
+			if (
+				patchFlag > 0 &&
+				patchFlag & PatchFlag.STABLE_FRAGMENT &&
+				dynamicChildren
+			) {
+				patchBlockChildren(
+					n1.dynamicChildren,
+					dynamicChildren,
+					container,
+					parentComponent
+				)
+			} else {
+				patchChildren(
+					n1.children,
+					n2.children,
+					container,
+					fragmentEndAnchor,
+					parentComponent,
+					optimized
+				)
+			}
 		}
 	}
 
-	const processComponent = (n1, n2, container, anchor, parentComponent) => {
+	const processComponent = (
+		n1,
+		n2,
+		container,
+		anchor,
+		parentComponent,
+		optimized
+	) => {
 		if (!n1) {
-			mountComponent(n2, container, anchor, parentComponent)
+			mountComponent(n2, container, anchor, parentComponent, optimized)
 		} else {
-			updateComponent(n1, n2)
+			updateComponent(n1, n2, optimized)
 		}
 	}
 
-	const mountComponent = (vnode, container, anchor) => {
+	const mountComponent = (
+		vnode,
+		container,
+		anchor,
+		parentComponent,
+		optimized
+	) => {
 
-		const instance = vnode.component = createComponentInstance(vnode, container)
+		const instance = vnode.component = createComponentInstance(vnode, parentComponent)
 
 		setupComponent(instance)
 
@@ -101,11 +151,12 @@ export function createRenderer (nodeOps) {
 			instance,
 			vnode,
 			container,
-			anchor
+			anchor,
+			optimized
 		)
 	}
 
-	const setupRenderEffect = (instance, vnode, container, anchor) => {
+	const setupRenderEffect = (instance, vnode, container, anchor, optimized) => {
 		const componentUpdateFn = () => {
 			if (!instance.isMounted) {
 				const subTree = instance.subTree = renderComponentRoot(instance)
@@ -120,7 +171,7 @@ export function createRenderer (nodeOps) {
 
 				if (next) {
 					next.el = vnode.el
-					updateComponentPreRender(instance, next)
+					updateComponentPreRender(instance, next, optimized)
 				} else {
 					next = vnode
 				}
@@ -145,13 +196,13 @@ export function createRenderer (nodeOps) {
 		update()
 	}
 
-	const updateComponentPreRender = (instance, nextVNode) => {
+	const updateComponentPreRender = (instance, nextVNode, optimized) => {
 		nextVNode.component = instance
 		const prevProps = instance.vnode.props
 		instance.vnode = nextVNode
 		instance.next = null
 
-		updateProps(instance, nextVNode.props, prevProps)
+		updateProps(instance, nextVNode.props, prevProps, optimized)
 	}
 
 	const updateComponent = (n1, n2) => {
@@ -169,15 +220,15 @@ export function createRenderer (nodeOps) {
 		}
 	}
 
-	const processElement = (n1, n2, container, anchor, parentComponent) => {
+	const processElement = (n1, n2, container, anchor, parentComponent, optimized) => {
 		if (!n1) {
 			mountElement(n2, container, anchor, parentComponent)
 		} else {
-			patchElement(n1, n2, parentComponent)
+			patchElement(n1, n2, parentComponent, optimized)
 		}
 	}
 
-	const patchElement = (n1, n2, parentComponent) => {
+	const patchElement = (n1, n2, parentComponent, optimized) => {
 		const el = n2.el = n1.el
 		const { patchFlag, dynamicChildren} = n2
 		const oldProps = n1.props
@@ -190,8 +241,8 @@ export function createRenderer (nodeOps) {
 				el,
 				parentComponent
 			)
-		} else {
-			patchChildren(n1, n2, el, null, parentComponent)
+		} else if (!optimized){
+			patchChildren(n1, n2, el, null, parentComponent, optimized)
 		}
 
 		if (patchFlag > 0) {
@@ -225,8 +276,14 @@ export function createRenderer (nodeOps) {
 					}
 				}
 			}
-		}
 
+			if (patchFlag & PatchFlag.TEXT) {
+				if (n2.children !== n1.children)
+				hostSetElementText(el, n2.children)
+			}
+		} else if (!optimized){
+			patchProps(el, n2, oldProps, newProps)
+		}
 	}
 
 	const patchBlockChildren = (c1, c2, container, parentComponent) => {
@@ -239,16 +296,41 @@ export function createRenderer (nodeOps) {
 				newVNode,
 				container,
 				null,
-				parentComponent
+				parentComponent,
+				true
 			)
 		}
 	}
 
-	const patchChildren = (n1, n2, container, anchor, parentComponent) => {
+	const patchChildren = (n1, n2, container, anchor, parentComponent, optimized) => {
 		const c1 = n1.children
 		const c2 = n2.children
-		const { shapeFlag } = n2
+		const { patchFlag, shapeFlag } = n2
 		const { shapeFlag: preShapeFlag = 0 } = n1
+
+		if (patchFlag > 0) {
+			if (patchFlag & PatchFlag.KEYED_FRAGMENT) {
+				patchKeyedChildren(
+					c1,
+					c2,
+					container,
+					anchor,
+					parentComponent,
+					optimized
+				)
+				return
+			} else if (patchFlag & PatchFlag.UNKEYED_FRAGMENT) {
+				patchUnkeyedChildren(
+					c1,
+					c2,
+					container,
+					anchor,
+					parentComponent,
+					optimized
+				)
+				return
+			}
+		}
 
 		// children has 3 possibilities: text, array or none
 		
@@ -265,7 +347,7 @@ export function createRenderer (nodeOps) {
 		// n n
 		if (shapeFlag & ShapeFlag.TEXT_CHILDREN) {
 			if (preShapeFlag & ShapeFlag.ARRAY_CHILDREN) {
-				unmountChildren(c1, parentComponent)
+				unmountChildren(c1, parentComponent, optimized)
 			}
 			c2 !== c1 && hostSetElementText(container, c2)
 		} else {
@@ -276,10 +358,11 @@ export function createRenderer (nodeOps) {
 						c2,
 						container,
 						anchor,
-						parentComponent
+						parentComponent,
+						optimized
 					)
 				} else {
-					unmountChildren(c1, parentComponent)
+					unmountChildren(c1, parentComponent, optimized)
 				}
 			} else {
 				if (preShapeFlag & ShapeFlag.TEXT_CHILDREN) {
@@ -287,16 +370,16 @@ export function createRenderer (nodeOps) {
 				}
 
 				if (shapeFlag & ShapeFlag.ARRAY_CHILDREN) {
-					mountChildren(c2, container, anchor, parentComponent)
+					mountChildren(c2, container, anchor, parentComponent, optimized)
 				}
 
 			}
 		}
 	}
 
-	const unmountChildren = (children, parentComponent) => {
+	const unmountChildren = (children, parentComponent, optimized) => {
 		for(let i = 0; i < children.length; i++) {
-			unmount(children[i], parentComponent)
+			unmount(children[i], parentComponent, optimized)
 		}
 	}
 
@@ -310,7 +393,55 @@ export function createRenderer (nodeOps) {
 		hostRemove(vnode.el)
 	}
 
-	const patchKeyedChildren = (c1, c2, container, parentAnchor, parentComponent) => {
+	const patchUnkeyedChildren = (
+		c1,
+		c2,
+		container,
+		anchor,
+		parentComponent,
+		optimized
+	) => {
+		const oldLength = c1.length
+		const newLength = c2.length
+
+		const commonLength = Math.min(oldLength, newLength)
+
+		for(let i = 0; i < commonLength; i++) {
+			patch(
+				c1[i],
+				normalizeVNode(c2[i]),
+				container,
+				parentAnchor,
+				parentComponent,
+				optimized
+			)
+		}
+
+		if (oldLength > newLength) {
+			unmountChildren(
+				c1.slice(commonLength),
+				parentComponent,
+				optimized
+			)
+		} else {
+			mountChildren(
+				c2.slice(commonLength),
+				container,
+				anchor,
+				parentComponent,
+				optimized
+			)
+		}
+	}
+
+	const patchKeyedChildren = (
+		c1,
+		c2,
+		container,
+		parentAnchor,
+		parentComponent,
+		optimized
+	) => {
 
 		let i = 0
 		const l2 = c2.length
@@ -330,7 +461,8 @@ export function createRenderer (nodeOps) {
 					n2,
 					container,
 					null,
-					parentComponent
+					parentComponent,
+					optimized
 				)
 				i++
 			} else {
@@ -350,7 +482,8 @@ export function createRenderer (nodeOps) {
 					n2,
 					container,
 					null,
-					parentComponent
+					parentComponent,
+					optimized
 				)
 				e1--
 				e2--
@@ -376,7 +509,8 @@ export function createRenderer (nodeOps) {
 						n2,
 						container,
 						anchor,
-						parentComponent
+						parentComponent,
+						optimized
 					)
 					i++
 				}
@@ -464,7 +598,8 @@ export function createRenderer (nodeOps) {
 						c2[newIndex],
 						container,
 						null,
-						parentComponent
+						parentComponent,
+						optimized
 					)
 					patched++
 				}
@@ -488,7 +623,8 @@ export function createRenderer (nodeOps) {
 						nextChild,
 						container,
 						anchor,
-						parentComponent
+						parentComponent,
+						optimized
 					)
 				} else if (moved) {
 					if (j < 0 || i !== increasingNewIndexSequence[j]) {
@@ -548,10 +684,10 @@ export function createRenderer (nodeOps) {
 		hostInsert(vnode.el, container, anchor)
 	}
 
-	const mountChildren = (children, el, anchor, parentComponent) => {
+	const mountChildren = (children, el, anchor, parentComponent, optimized) => {
 		for(let i = 0; i < children.length; i++) {
 			let child = children[i] = normalizeVNode(children[i])
-			patch(null, child, el, anchor, parentComponent)
+			patch(null, child, el, anchor, parentComponent, optimized)
 		}
 	}
 
