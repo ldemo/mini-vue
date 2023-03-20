@@ -290,10 +290,12 @@ export function createRenderer (nodeOps) {
 		for (let i = 0; i < c2.length; i++) {
 			const oldVNode = c1[i]
 			const newVNode = c2[i]
-			
-			const container = oldVNode.el && oldVNode.type === Fragment
-				? hostParentNode(oldVNode.el)
-				: fallbackContainer
+
+			const container = oldVNode.el &&
+				(oldVNode.type === Fragment ||
+					!isSameVNodeType(oldVNode, newVNode))
+					? hostParentNode(oldVNode.el)
+					: fallbackContainer
 
 			patch(
 				oldVNode,
