@@ -109,8 +109,8 @@ export function createRenderer (nodeOps) {
 				)
 			} else {
 				patchChildren(
-					n1.children,
-					n2.children,
+					n1,
+					n2,
 					container,
 					fragmentEndAnchor,
 					parentComponent,
@@ -286,10 +286,14 @@ export function createRenderer (nodeOps) {
 		}
 	}
 
-	const patchBlockChildren = (c1, c2, container, parentComponent) => {
+	const patchBlockChildren = (c1, c2, fallbackContainer, parentComponent) => {
 		for (let i = 0; i < c2.length; i++) {
 			const oldVNode = c1[i]
 			const newVNode = c2[i]
+			
+			const container = oldVNode.el && oldVNode.type === Fragment
+				? hostParentNode(oldVNode.el)
+				: fallbackContainer
 
 			patch(
 				oldVNode,
@@ -411,7 +415,7 @@ export function createRenderer (nodeOps) {
 				c1[i],
 				normalizeVNode(c2[i]),
 				container,
-				parentAnchor,
+				null,
 				parentComponent,
 				optimized
 			)
