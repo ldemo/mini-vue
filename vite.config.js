@@ -5,6 +5,9 @@ import mdx from "@mdx-js/rollup"
 import theme from "./learn-mdx/theme/theme"
 
 export default defineConfig({
+	build: {
+		outDir: 'docs'
+	},
 	optimizeDeps: {
 		include: ["react/jsx-runtime"],
 	},
