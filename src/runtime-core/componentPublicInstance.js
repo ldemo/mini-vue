@@ -9,5 +9,14 @@ export const PublicInstanceProxyHandler = {
 		} else if (hasOwn(normalizedProps, key)) {
 			return props[key]
 		}
+	},
+
+	set({ _: instance }, key, value) {
+		const { setupState } = instance
+
+		if (hasOwn(setupState, key)) {
+			setupState[key] = value
+      return true
+		}
 	}
 }

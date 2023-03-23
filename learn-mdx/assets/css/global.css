@@ -1,0 +1,9 @@
+@import url('./ch-style.css');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+	tab-size: 2;
+	color-scheme: dark;
+}

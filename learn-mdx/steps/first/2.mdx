@@ -1,0 +1,238 @@
+import HFunc from './h-preview'
+
+<CH.Scrollycoding>
+
+变量 `template` 是无法直接被 `js` 使用
+
+有经验的小伙伴也可以看出这是 `jsx` 的写法
+
+不熟悉 `jsx` 的小伙伴，我们换一种写法也能表达
+
+<CH.Code>
+
+```html demo.html
+<html>
+	<body>
+		<div id="demo">
+			hello world
+		</div>
+	</body>
+	<script>
+		const template = document.getElementById('demo')
+	</script>
+<html>
+```
+</CH.Code>
+
+---
+
+之所以使用 `jsx` 是为了代码演示方便一些
+
+这点不影响流程
+
+我们声明一个函数 `h`，其返回值是 `js` 版的 `dom`
+
+我们称其为 `virtual dom`，后续会缩写为 `vnode`
+
+至于为什么需要 `vnode`，想来已是老生常谈，这边不做赘述
+
+需要了解的原因的小伙伴可以自行查询
+
+<CH.Code>
+```jsx demo.js
+const h = (type, props, children) => {
+	return {
+		type,
+		props,
+		children
+	}
+}
+```
+</CH.Code>
+
+---
+
+`h` 函数的三个参数，我们逐个了解一下
+
+`type` 代表节点类型
+
+`props` 代表节点属性
+
+`children` 代表节点内容
+
+举个例子
+
+<CH.Code>
+```jsx demo.js
+const template = h('div', { id: 'demo' }, children: [
+	h('div', { class: 'green' }, children: 'hello div')
+	h('p', { class: 'orange' }, children: 'hello p')
+])
+```
+</CH.Code>
+<CH.Preview frameless>
+  <HFunc />
+</CH.Preview>
+
+---
+
+那组件的 `vnode` 又该如何
+
+是这样！
+
+<CH.Code>
+```jsx demo.jsx
+	// 定义组件
+	const Comp = () => {
+		setup() {
+			return () => h('div', {}, [
+				h('div', { class: 'demo' }, null)
+			])
+		}
+	}
+
+	const vnode = h(Comp, {})
+```
+</CH.Code>
+
+---
+
+已经有眼尖的小伙伴看出，`h` 函数的后两个参数并不是必需的
+
+我们适当的改造一下
+
+<CH.Code>
+```js demo.js
+const h = (type, propsOrChildren, children) => {
+	const l = arguments.length
+	if (l === 2) {
+		if (isObject(propsOrChildren)) {
+			// props without children
+			createVNode(type, propsOrChildren)
+		} else {
+			// omit props
+			createVNode(type, null, propsOrChildren)
+		}
+	} else {
+		createVNode(type, propsOrChildren, children)
+	}
+}
+
+const createVNode = (type, props, children) => {
+	return {
+		type,
+		props,
+		children
+	}
+}
+
+```
+</CH.Code>
+
+---
+
+了解完 `h` 函数后，我们往下走
+
+需要实现一下 `createApp` 
+
+<CH.Code>
+```js demo.js focus=3[1:11],7[3]
+	const template = h('div', { id: 'demo' }, children: 'hello world')
+
+	createApp({
+		render() {
+			return template
+		}
+	}).mount('#root')
+```
+
+</CH.Code>
+
+
+--- 
+声明 `createApp` 函数
+
+<CH.Code >
+```js demo.js
+	const createApp = (...args) => {
+		const { rootComponent } = args
+		return {
+			mount(selector) {
+				const container = document.querySelector(selector)
+				const vnode = h(rootComponent, {})
+
+				// TODO 渲染
+			}
+		}
+	}
+```
+</CH.Code>
+
+---
+
+代码合并一下
+
+<CH.Code maxZoom={0.5}>
+
+```jsx demo.js
+
+	const h = (type, propsOrChildren, children) => {
+		const l = arguments.length
+		if (l === 2) {
+			if (isObject(propsOrChildren)) {
+				// props without children
+				createVNode(type, propsOrChildren)
+			} else {
+				// omit props
+				createVNode(type, null, propsOrChildren)
+			}
+		} else {
+			createVNode(type, propsOrChildren, children)
+		}
+	}
+
+	const createVNode = (type, props, children) => {
+		return {
+			type,
+			props,
+			children
+		}
+	}
+
+	const createApp = (...args) => {
+		const { rootComponent } = args
+		return {
+			mount(selector) {
+				const container = document.querySelector(selector)
+				const vnode = h(rootComponent, {})
+
+				// TODO 渲染
+			}
+		}
+	}
+
+	const template = h(
+		'div',
+		{ id: 'demo' },
+		children: 'hello world'
+	)
+
+	createApp({
+		render() {
+			return template
+		}
+	}).mount('#root')
+
+
+```
+</CH.Code>
+
+---
+
+总结
+
+本篇完成 `dom` 到 `vnode` 的转换
+
+未完待续...
+
+</CH.Scrollycoding>
