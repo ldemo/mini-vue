@@ -5,6 +5,7 @@ import mdx from "@mdx-js/rollup"
 import theme from "./learn-mdx/theme/theme"
 
 export default defineConfig({
+	base: '/mini-vue',
 	build: {
 		outDir: 'docs'
 	},
