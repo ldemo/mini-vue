@@ -2,10 +2,8 @@ import HFunc from './h-preview'
 
 <CH.Scrollycoding>
 
-变量 `template` 是无法直接被 `js` 使用
-
-有经验的小伙伴也可以看出这是 `jsx` 的写法
-
+变量 `template` 是无法直接被 `js` 使用  
+有经验的小伙伴也可以看出这是 `jsx` 的写法  
 不熟悉 `jsx` 的小伙伴，我们换一种写法也能表达
 
 <CH.Code>
@@ -26,17 +24,16 @@ import HFunc from './h-preview'
 
 ---
 
-之所以使用 `jsx` 是为了代码演示方便一些
-
-这点不影响流程
-
-我们声明一个函数 `h`，其返回值是 `js` 版的 `dom`
-
-我们称其为 `virtual dom`，后续会缩写为 `vnode`
-
-至于为什么需要 `vnode`，想来已是老生常谈，这边不做赘述
-
-需要了解的原因的小伙伴可以自行查询
+之所以使用 `jsx` 是为了代码演示方便一些，  
+这点不影响流程。  
+我们声明一个函数 `h`，其返回值是 `js` 版的 `dom`。   
+我们称其为 `virtual dom`，后续会缩写为 `vnode`。
+<br />  
+至于为什么需要 `vnode`。一来，`html` 节点的属性  
+比较复杂，操作简化版的对象肯定来得 `轻松` 。二来，  
+复杂的交互会让我们频繁的修改数据，拿着 `副本` 进行  
+演练再实战肯定会 `高效` 一些。再者就是前端的战场  
+不止是浏览器，`vnode` 到 `节点` 的转换也留了空间。
 
 <CH.Code>
 ```jsx demo.js
@@ -52,36 +49,50 @@ const h = (type, props, children) => {
 
 ---
 
-`h` 函数的三个参数，我们逐个了解一下
-
-`type` 代表节点类型
-
-`props` 代表节点属性
-
-`children` 代表节点内容
-
-举个例子
-
-<CH.Code>
-```jsx demo.js
-const template = h('div', { id: 'demo' }, children: [
-	h('div', { class: 'green' }, children: 'hello div')
-	h('p', { class: 'orange' }, children: 'hello p')
-])
-```
-</CH.Code>
-<CH.Preview frameless>
+`h` 函数的三个参数，我们逐个了解一下。  
+`type` 代表节点类型，  
+`props` 代表节点属性，  
+`children` 代表节点内容。  
+<br />
+举个例子！
+<CH.Preview frameless className="mt-4">
   <HFunc />
 </CH.Preview>
 
+<CH.Code>
+```jsx demo.js focus=9:12
+	const h = (type, props, children) => {
+		return {
+			type,
+			props,
+			children
+		}
+	}
+
+	const template = h('div', { id: 'demo' }, children: [
+		h('div', { class: 'green' }, children: 'hello div')
+		h('p', { class: 'orange' }, children: 'hello p')
+	])
+```
+</CH.Code>
+
 ---
 
-那组件的 `vnode` 又该如何
-
+日常开发中，组件又是不可或缺的位置，  
+那组件的 `vnode` 该如何？
+<br />
 是这样！
 
 <CH.Code>
-```jsx demo.jsx
+```jsx demo.jsx focus=9:18
+	const h = (type, props, children) => {
+		return {
+			type,
+			props,
+			children
+		}
+	}
+
 	// 定义组件
 	const Comp = () => {
 		setup() {
@@ -97,9 +108,35 @@ const template = h('div', { id: 'demo' }, children: [
 
 ---
 
-已经有眼尖的小伙伴看出，`h` 函数的后两个参数并不是必需的
+已经有眼尖的小伙伴看到了一丝端倪，  
+`h` 函数的后两个参数并不是必需的。  
+```jsx demo.jsx focus=12[26,27],13[33:36]
+	const h = (type, props, children) => {
+		return {
+			type,
+			props,
+			children
+		}
+	}
 
-我们适当的改造一下
+	// 定义组件
+	const Comp = () => {
+		setup() {
+			// mark[26:27]
+			return () => h('div', {}, [
+				// mark[33:36]
+				h('div', { class: 'demo' }, null)
+			])
+		}
+	}
+
+	const vnode = h(Comp, {})
+```
+
+---
+
+
+适当的改造一下 `h` 函数。
 
 <CH.Code>
 ```js demo.js
@@ -131,9 +168,8 @@ const createVNode = (type, props, children) => {
 
 ---
 
-了解完 `h` 函数后，我们往下走
-
-需要实现一下 `createApp` 
+`h` 函数告一段落，  
+接下来实现一下 `createApp`。  
 
 <CH.Code>
 ```js demo.js focus=3[1:11],7[3]
@@ -150,7 +186,7 @@ const createVNode = (type, props, children) => {
 
 
 --- 
-声明 `createApp` 函数
+声明 `createApp` 函数。
 
 <CH.Code >
 ```js demo.js
@@ -162,6 +198,7 @@ const createVNode = (type, props, children) => {
 				const vnode = h(rootComponent, {})
 
 				// TODO 渲染
+				render(vnode, container)
 			}
 		}
 	}
@@ -170,12 +207,107 @@ const createVNode = (type, props, children) => {
 
 ---
 
-代码合并一下
+再实现一下 `render` 函数。
 
-<CH.Code maxZoom={0.5}>
+<CH.Code>
+```js demo.js focus=13:19
+	const createApp = (...args) => {
+		const { rootComponent } = args
+		return {
+			mount(selector) {
+				const container = document.querySelector(selector)
+				const vnode = h(rootComponent, {})
+
+				render(vnode, container)
+			}
+		}
+	}
+
+	const render = (vnode, container) => {
+		const child = vnode.type.render()
+
+		const el = document.createElement(child.type)
+		el.textContent = child.children
+		container.insertBefore(el)
+	}
+```
+</CH.Code>
+
+---
+
+前文也提到了 `vnode` 的优点之一便是预留了转换  
+`节点` 的空间。  
+
+<br />
+我们先定义转换 `节点` 的方法。
+
+<CH.Code>
+```js demo.js
+	const nodeOpts = {
+		createElement: tag => document.createElement(tag),
+		setElementText: (el, text) => el.textContent = text,
+		insert: (parent, child, anchor) => {
+			return parent.insertBefore(child, anchor)
+		}
+	}
+```
+</CH.Code>
+
+---
+
+改造下createApp。
+<CH.Code>
+```js demo.js
+	const nodeOpts = {
+		createElement: tag => document.createElement(tag),
+		setElementText: (el, text) => el.textContent = text,
+		insert: (parent, child, anchor) => {
+			return parent.insertBefore(child, anchor)
+		}
+	}
+
+	const ensureRenderer = (nodeOpts) => {
+		const {
+			createElement,
+			setElementText,
+			insert,
+		} = nodeOpts
+
+		const render = (vnode, container) => {
+			const child = vnode.type.render()
+			const el = createElement(child.type)
+			setElementText(el, child.children)
+			insert(container, el)
+		}
+
+		return {
+			createApp: function(...args) {
+				const { rootComponent } = args
+				return {
+					mount(selector) {
+						const container = document.querySelector(selector)
+						const vnode = h(rootComponent, {})
+
+						render(vnode, container)
+					}
+				}
+			}
+		}
+	}
+
+	const createApp = ensureRenderer(nodeOpts).createApp
+
+```
+</CH.Code>
+
+---
+
+如此，初步完成了 `vnode` 的渲染。  
+代码合并一下。
+
+<CH.Code>
 
 ```jsx demo.js
-
 	const h = (type, propsOrChildren, children) => {
 		const l = arguments.length
 		if (l === 2) {
@@ -199,17 +331,44 @@ const createVNode = (type, props, children) => {
 		}
 	}
 
-	const createApp = (...args) => {
-		const { rootComponent } = args
-		return {
-			mount(selector) {
-				const container = document.querySelector(selector)
-				const vnode = h(rootComponent, {})
+	const nodeOpts = {
+		createElement: tag => document.createElement(tag),
+		setElementText: (el, text) => el.textContent = text,
+		insert: (parent, child, anchor) => {
+			return parent.insertBefore(child, anchor)
+		}
+	}
 
-				// TODO 渲染
+	const ensureRenderer = (nodeOpts) => {
+		const {
+			createElement,
+			setElementText,
+			insert,
+		} = nodeOpts
+
+		const render = (vnode, container) => {
+			const child = vnode.type.render()
+			const el = createElement(child.type)
+			setElementText(el, child.children)
+			insert(container, el)
+		}
+
+		return {
+			createApp: function(...args) {
+				const { rootComponent } = args
+				return {
+					mount(selector) {
+						const container = document.querySelector(selector)
+						const vnode = h(rootComponent, {})
+
+						render(vnode, container)
+					}
+				}
 			}
 		}
 	}
+
+	const createApp = ensureRenderer(nodeOpts).createApp
 
 	const template = h(
 		'div',
@@ -231,8 +390,6 @@ const createVNode = (type, props, children) => {
 
 总结
 
-本篇完成 `dom` 到 `vnode` 的转换
-
-未完待续...
+本篇介绍了 `vnode` 的由来，完成简单的 `节点` 渲染。
 
 </CH.Scrollycoding>

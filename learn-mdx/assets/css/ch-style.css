@@ -125,6 +125,6 @@ code {
 	@apply no-underline;
 }
 .ch-scrollycoding-sticker .ch-editor-frame {
-	height: 60vh !important;
-	max-height: 60vh !important;
+	height: 80vh !important;
+	max-height: 80vh !important;
 }
