@@ -1,5 +1,4 @@
 import { MotionConfig, motion } from "framer-motion"
-import preImg from '../../assets/images/1.png'
 
 export default () => {
 	return (
@@ -11,7 +10,7 @@ export default () => {
 					animate={{ x: 0, opacity: 1 }}
 					transition={{ delay: 0.5 }}
 				>
-					<img src={preImg} />
+					<img src={"/1.png"} />
 				</motion.div>
 			</MotionConfig>
 		</>

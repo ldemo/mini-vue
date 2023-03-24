@@ -1,4 +1,4 @@
 ## learn vue
-![流程图](./src//assets/images/flow.png)
+![流程图](/public/flow.png)
 ### TODO
  - compile
