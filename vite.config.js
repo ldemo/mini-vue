@@ -6,9 +6,6 @@ import theme from "./learn-mdx/theme/theme"
 
 export default defineConfig({
 	base: '/mini-vue',
-	build: {
-		outDir: 'dist'
-	},
 	optimizeDeps: {
 		include: ["react/jsx-runtime"],
 	},

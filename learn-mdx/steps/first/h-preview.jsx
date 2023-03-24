@@ -1,4 +1,5 @@
 import { MotionConfig, motion } from "framer-motion"
+import HPreImg from '/1.png'
 
 export default () => {
 	return (
@@ -10,7 +11,7 @@ export default () => {
 					animate={{ x: 0, opacity: 1 }}
 					transition={{ delay: 0.5 }}
 				>
-					<img src={"/1.png"} />
+					<img src={HPreImg} />
 				</motion.div>
 			</MotionConfig>
 		</>
