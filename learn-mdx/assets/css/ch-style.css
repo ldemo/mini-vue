@@ -100,7 +100,7 @@
 	min-height: calc(100vh - 1px);
 }
 .ch-scrollycoding-step-content {
-	@apply text-gray-400 flex flex-col justify-center text-lg my-8;
+	@apply text-gray-400 flex flex-col justify-center text-lg my-8 max-w-[480px];
 }
 .ch-scrollycoding-step-content[data-selected] {
 	@apply text-white border-l-green-200 border-l-4 border-r-0 border-t-0 border-b-0 rounded-none pl-8;
@@ -109,9 +109,7 @@
 	@apply max-w-[900px] min-w-[620px];
 	top: 10vh;
 }
-.ch-editor-button {
-	@apply hidden;
-}
+
 .ch-section {
 	@apply text-white text-lg;
 }

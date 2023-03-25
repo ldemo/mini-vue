@@ -1,5 +1,5 @@
 import "@code-hike/mdx/styles"
-import First from './steps/first/index'
+import CreateAppAndVNode from './steps/createAppAndVNode/index'
 
 function App() {
   return (
@@ -8,7 +8,7 @@ function App() {
 				<div className="h-screen flex justify-center items-center text-cyan-50 text-9xl">
 					hello Vue
 				</div>
-				<First />
+				<CreateAppAndVNode />
 				<div className="h-[40vh] flex justify-end items-end pb-20 text-cyan-50 text-2xl">
 					By 一路有晴天
 				</div>
