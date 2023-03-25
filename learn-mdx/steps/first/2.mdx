@@ -7,7 +7,6 @@ import HFunc from './h-preview'
 不熟悉 `jsx` 的小伙伴，我们换一种写法也能表达
 
 <CH.Code>
-
 ```html demo.html
 <html>
 	<body>
@@ -55,6 +54,7 @@ const h = (type, props, children) => {
 `children` 代表节点内容。  
 <br />
 举个例子！
+
 <CH.Preview frameless className="mt-4">
   <HFunc />
 </CH.Preview>
@@ -69,9 +69,9 @@ const h = (type, props, children) => {
 		}
 	}
 
-	const template = h('div', { id: 'demo' }, children: [
-		h('div', { class: 'green' }, children: 'hello div')
-		h('p', { class: 'orange' }, children: 'hello p')
+	const template = h('div', { id: 'demo' }, [
+		h('div', { class: 'green' }, 'hello div')
+		h('p', { class: 'orange' }, 'hello p')
 	])
 ```
 </CH.Code>
@@ -109,7 +109,9 @@ const h = (type, props, children) => {
 ---
 
 已经有眼尖的小伙伴看到了一丝端倪，  
-`h` 函数的后两个参数并不是必需的。  
+`h` 函数的后两个参数并不是必需的。
+
+<CH.Code>
 ```jsx demo.jsx focus=12[26,27],13[33:36]
 	const h = (type, props, children) => {
 		return {
@@ -132,6 +134,7 @@ const h = (type, props, children) => {
 
 	const vnode = h(Comp, {})
 ```
+</CH.Code>
 
 ---
 
@@ -140,18 +143,20 @@ const h = (type, props, children) => {
 
 <CH.Code>
 ```js demo.js
-const h = (type, propsOrChildren, children) => {
+const isObject = val => val !== null && typeof val === 'object'
+
+const h = function(type, propsOrChildren, children) {
 	const l = arguments.length
 	if (l === 2) {
 		if (isObject(propsOrChildren)) {
 			// props without children
-			createVNode(type, propsOrChildren)
+			return createVNode(type, propsOrChildren)
 		} else {
 			// omit props
-			createVNode(type, null, propsOrChildren)
+			return createVNode(type, null, propsOrChildren)
 		}
 	} else {
-		createVNode(type, propsOrChildren, children)
+		return createVNode(type, propsOrChildren, children)
 	}
 }
 
@@ -173,7 +178,7 @@ const createVNode = (type, props, children) => {
 
 <CH.Code>
 ```js demo.js focus=3[1:11],7[3]
-	const template = h('div', { id: 'demo' }, children: 'hello world')
+	const template = h('div', { id: 'demo' }, 'hello world')
 
 	createApp({
 		render() {
@@ -181,11 +186,11 @@ const createVNode = (type, props, children) => {
 		}
 	}).mount('#root')
 ```
-
 </CH.Code>
 
 
 --- 
+
 声明 `createApp` 函数。
 
 <CH.Code >
@@ -237,9 +242,8 @@ const createVNode = (type, props, children) => {
 
 前文也提到了 `vnode` 的优点之一便是预留了转换  
 `节点` 的空间。  
-
 <br />
-我们先定义转换 `节点` 的方法。
+我们定义转换 `节点` 的方法。
 
 <CH.Code>
 ```js demo.js
@@ -249,6 +253,10 @@ const createVNode = (type, props, children) => {
 		insert: (parent, child, anchor) => {
 			return parent.insertBefore(child, anchor)
 		}
+	}
+
+	const patchProp = (el, key, prevVal, nextVal) => {
+		el.setAttribute(key, nextVal)
 	}
 ```
 </CH.Code>
@@ -256,33 +264,32 @@ const createVNode = (type, props, children) => {
 ---
 
 改造下createApp。
+
 <CH.Code>
 ```js demo.js
-	const nodeOpts = {
-		createElement: tag => document.createElement(tag),
-		setElementText: (el, text) => el.textContent = text,
-		insert: (parent, child, anchor) => {
-			return parent.insertBefore(child, anchor)
-		}
-	}
+	const nodeOpts = {...}
+	const patchProp = (el, key, prevVal, nextVal) => {...}
 
-	const ensureRenderer = (nodeOpts) => {
+	const ensureRenderer = (renderOptions) => {
 		const {
 			createElement,
 			setElementText,
 			insert,
-		} = nodeOpts
+			patchProp
+		} = renderOptions
 
 		const render = (vnode, container) => {
 			const child = vnode.type.render()
 			const el = createElement(child.type)
 			setElementText(el, child.children)
+			for(const key in child.props) {
+				patchProp(el, key, '', child.props[key])
+			}
 			insert(container, el)
 		}
 
 		return {
-			createApp: function(...args) {
-				const { rootComponent } = args
+			createApp: function(rootComponent) {
 				return {
 					mount(selector) {
 						const container = document.querySelector(selector)
@@ -295,8 +302,9 @@ const createVNode = (type, props, children) => {
 		}
 	}
 
-	const createApp = ensureRenderer(nodeOpts).createApp
-
+	const renderOptions = { ...nodeOpts, patchProps }
+	const createApp = ensureRenderer(renderOptions).createApp
+	
 ```
 </CH.Code>
 
@@ -306,20 +314,20 @@ const createVNode = (type, props, children) => {
 代码合并一下。
 
 <CH.Code>
-
 ```jsx demo.js
-	const h = (type, propsOrChildren, children) => {
+	const isObject = val => val !== null && typeof val === 'object'
+	const h = function(type, propsOrChildren, children) {
 		const l = arguments.length
 		if (l === 2) {
 			if (isObject(propsOrChildren)) {
 				// props without children
-				createVNode(type, propsOrChildren)
+				return createVNode(type, propsOrChildren)
 			} else {
 				// omit props
-				createVNode(type, null, propsOrChildren)
+				return createVNode(type, null, propsOrChildren)
 			}
 		} else {
-			createVNode(type, propsOrChildren, children)
+			return createVNode(type, propsOrChildren, children)
 		}
 	}
 
@@ -339,23 +347,30 @@ const createVNode = (type, props, children) => {
 		}
 	}
 
-	const ensureRenderer = (nodeOpts) => {
+	const patchProp = (el, key, prevVal, nextVal) => {
+		el.setAttribute(key, nextVal)
+	}
+
+	const ensureRenderer = (renderOptions) => {
 		const {
 			createElement,
 			setElementText,
 			insert,
-		} = nodeOpts
+			patchProp
+		} = renderOptions
 
 		const render = (vnode, container) => {
 			const child = vnode.type.render()
 			const el = createElement(child.type)
 			setElementText(el, child.children)
+			for(const key in child.props) {
+				patchProp(el, key, '', child.props[key])
+			}
 			insert(container, el)
 		}
 
 		return {
-			createApp: function(...args) {
-				const { rootComponent } = args
+			createApp: function(rootComponent) {
 				return {
 					mount(selector) {
 						const container = document.querySelector(selector)
@@ -368,12 +383,13 @@ const createVNode = (type, props, children) => {
 		}
 	}
 
-	const createApp = ensureRenderer(nodeOpts).createApp
+	const renderOptions = { ...nodeOpts, patchProp }
+	const createApp = ensureRenderer(renderOptions).createApp
 
 	const template = h(
 		'div',
 		{ id: 'demo' },
-		children: 'hello world'
+		'hello world'
 	)
 
 	createApp({
@@ -381,15 +397,11 @@ const createVNode = (type, props, children) => {
 			return template
 		}
 	}).mount('#root')
-
-
 ```
 </CH.Code>
-
----
-
-总结
-
-本篇介绍了 `vnode` 的由来，完成简单的 `节点` 渲染。
-
 </CH.Scrollycoding>
+
+<div className="mt-20 text-lg text-white">
+总结  
+本篇简单实现了 `节点` 与 `VNode` 的相互转化，方便后续对 `Vue` 如何聚焦注意力的方式进行更深一步的探索。
+</div>
