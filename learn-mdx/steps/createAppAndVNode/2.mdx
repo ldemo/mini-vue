@@ -194,8 +194,7 @@ const createVNode = (type, props, children) => {
 
 <CH.Code >
 ```js demo.js
-	const createApp = (...args) => {
-		const { rootComponent } = args
+	const createApp = (rootComponent) => {
 		return {
 			mount(selector) {
 				const container = document.querySelector(selector)
@@ -214,14 +213,14 @@ const createVNode = (type, props, children) => {
 再实现一下 `render` 函数。
 
 <CH.Code>
-```js demo.js focus=13:19
-	const createApp = (...args) => {
-		const { rootComponent } = args
+```js demo.js focus=12:19
+	const createApp = (rootComponent) => {
 		return {
 			mount(selector) {
 				const container = document.querySelector(selector)
 				const vnode = h(rootComponent, {})
 
+				// focus
 				render(vnode, container)
 			}
 		}
@@ -402,5 +401,5 @@ const createVNode = (type, props, children) => {
 
 <div className="mt-20 text-lg text-white">
 总结  
-本篇简单实现了 `节点` 与 `VNode` 的相互转化，方便后续对 `Vue` 如何聚焦注意力的方式进行更深一步的探索。
+本篇简单实现了 `节点` 与 `vnode` 的相互转化，方便后续对 `Vue` 如何聚焦注意力的方式进行更深一步的探索。
 </div>
