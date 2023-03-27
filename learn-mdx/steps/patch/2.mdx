@@ -1,0 +1,481 @@
+<CH.Scrollycoding showCopyButton={true} showExpandButton={false}>
+先对 `节点` 进行 `vnode` 转化，那日常开发中又没有手写 `vnode` 
+转化函数，又是如何实现转化的呢？
+<br />
+这点，我们的 `构建工具` 中会集成一些转化的工具去处理这类事情，比如 `babel` 这些。
+<br />
+当然，后面的文章也会对 `节点` 到 `vnode` 的转化流程做深入的了解,
+这里我们暂且忽略。
+
+<CH.Code>
+```jsx demo.jsx focus=13:16
+const Comp = {
+	setup() {
+		const msg = "I'm comp"
+		return () => (
+			// focus
+			h('div', msg)
+		)
+	}
+}
+
+createApp({
+	render() {
+		return (
+			h('div', { id: 'demo' }, [
+				h('span', 'hello world'),
+				h(Comp, {})
+			])
+		)
+	}
+}).mount('#root')
+```
+</CH.Code>
+
+---
+
+还记得上文对 `createApp` 实现吗？  
+这里我们重温下代码。
+<br />
+可以看到，在 `render` 函数中，我们武断地对 `根组件` 的 `children` 进行了
+ `简单节点` 的处置。
+
+<CH.Code>
+```jsx demo.jsx focus=9:17
+	const ensureRenderer = (renderOptions) => {
+		const {
+			createElement,
+			setElementText,
+			insert,
+			patchProp
+		} = renderOptions
+
+		const render = (vnode, container) => {
+			const child = vnode.type.render()
+			const el = createElement(child.type)
+			setElementText(el, child.children)
+			for(const key in child.props) {
+				patchProp(el, key, '', child.props[key])
+			}
+			insert(container, el)
+		}
+
+		return {
+			createApp: function(rootComponent) {
+				return {
+					mount(selector) {
+						const container = document.querySelector(selector)
+						const vnode = h(rootComponent, {})
+
+						// focus
+						render(vnode, container)
+					}
+				}
+			}
+		}
+	}
+```
+</CH.Code>
+
+---
+
+这显然是不可以的。  
+需要对 `组件` 和 `节点` 进行区别对待！
+<br />
+这里定义 `ShapeFlags`，改造 `createVNode` 函数。
+
+<CH.Code>
+```jsx demo.jsx focus=1:4,10:14
+const ShapeFlags = {
+	ELEMENT: 1,
+	STATEFUL_COMPONENT: 1 << 2
+}
+
+const isString = val => typeof val === 'string'
+const isObject = val => val !== null && typeof val === 'object'
+
+const createVNode = (type, props, children) => {
+	const shapeFlag = isString(type)
+		? ShapeFlags.ELEMENT
+		: isObject(type)
+			? ShapeFlags.STATEFUL_COMPONENT
+			: 0
+
+	return {
+		type,
+		props,
+		children,
+		// focus
+		shapeFlag
+	}
+}
+
+```
+</CH.Code>
+
+---
+
+同时也要改造 `render` 函数，
+定义 `patch` 函数，对不同 `节点` 进行分发处理。
+
+```jsx demo.jsx focus=13:21
+	const ensureRenderer = (renderOptions) => {
+		const {
+			createElement,
+			setElementText,
+			insert,
+			patchProp
+		} = renderOptions
+
+		const render = (vnode, container) => {
+			// focus
+			patch(vnode, container)
+		}
+
+		const patch = (vnode, container) => {
+			const { shapeFlag } = vnode
+
+			if (shapeFlag & ShapeFlags.ELEMENT) {
+				processElement(vnode, container)
+			} else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
+				processComponent(vnode, container)
+			}
+		}
+
+		return {
+			createApp: function(rootComponent) {
+				return {
+					mount(selector) {
+						const container = document.querySelector(selector)
+						const vnode = h(rootComponent, {})
+
+						render(vnode, container)
+					}
+				}
+			}
+		}
+	}
+
+	const renderOptions = { ...nodeOpts, patchProp }
+	const createApp = ensureRenderer(renderOptions).createApp
+```
+
+--- 
+
+可能会有些小伙伴会对 `&` 操作符存在一定的疑问。
+这里对本文的用法简单说明。
+<br />
+可以理解为每个 `类型` 都代表着 `一把锁的钥匙`。  
+`|=` 操作代表 `赋予钥匙`，`&` 操作就是判断两者是否 `拥有` 同样的钥匙。
+`=` 操作自然就直接是替换成 `这把锁的钥匙`。
+
+
+<CH.Code>
+```jsx demo.jsx
+ShapeFlags.ELEMENT = 1
+// 转化成二进制，此处省略前面的0，拥有第一个位置的钥匙
+... 0001
+
+ShapeFlags.STATEFUL_COMPONENT = 1 << 2
+// 转化成二进制，此处省略前面的0，拥有第三个位置的钥匙
+... 0100
+
+const shapeFlag = ShapeFlags.ELEMENT
+shapeFlag & ShapeFlags.STATEFUL_COMPONENT
+// 上面操作就等同与两个二进制数据的每个数字在对应的位置做 && 操作 
+... 0001
+... 0100
+---------------
+... 0000
+
+// 全0，即钥匙不匹配，若相同位置都是1，&& 时便还是1，钥匙匹配，即类型匹配。
+```
+</CH.Code>
+
+---
+
+回归原来的 `patch` 函数，先实现下 `processElement` 函数。
+
+<CH.Code>
+```jsx demo.jsx
+const processElement = (vnode, container) => {
+	mountElement(vnode, container)
+}
+
+const mountElement = (vnode, container) => {
+	const { type, children, props } = vnode
+	const el = vnode.el = createElement(type)
+
+	if (isString(children)) {
+		setElementText(el, children)
+	} else if (isArray(children)) {
+		mountChildren(children, el)
+	}
+
+	for(const key in props) {
+		patchProp(el, key, '', props[key])
+	}
+	insert(container, el)
+}
+
+const mountChildren = (children, el) => {
+	for(let i = 0; i < children.length; i++) {
+		let child = children[i]
+		patch(child, el)
+	}
+}
+```
+</CH.Code>
+
+---
+
+实现到这里，相信已经开始不自觉的联想到 `更新` 。
+总不能一直 `挂载` 吧。
+<br />
+同时，如果子节点是数组，那如何定位要插入的位置呢？
+所以需要增加 `anchor` 来定位。
+趁现在代码量还不多，改造，改造。
+
+```jsx demo.jsx focus=15:21
+const render = (vnode, container) => {
+	// focus
+	patch(null, vnode, container, null)
+}
+
+// focus
+const patch = (n1, n2, container, anchor) => {
+	const { shapeFlag } = n2
+
+	if (shapeFlag & ShapeFlags.ELEMENT) {
+		// focus
+		processElement(n1, n2, container, anchor)
+	} else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
+		// focus
+		processComponent(n1, n2, container, anchor)
+	}
+}
+
+const processElement = (n1, n2, container, anchor) => {
+	if (!n1) {
+		mountElement(n2, container, anchor)
+	} else {
+		// TODO update
+	}
+}
+
+// focus
+const mountElement = (vnode, container, anchor) => {
+	...
+	} else if (isArray(children)) {
+		// focus
+		mountChildren(children, el, null)
+	}
+	...
+	// focus
+	insert(container, el, anchor)
+}
+
+// focus
+const mountChildren = (children, el, anchor) => {
+	for(let i = 0; i < children.length; i++) {
+		let child = children[i]
+		// focus
+		patch(null, child, el, anchor)
+	}
+}
+
+```
+
+---
+
+对于 `节点` 的处理，不难看出处理 `children` 是每个
+`节点` 都需要面对的。那 `children` 不外乎
+三种情况，`text`、`array`、`no children`。
+<br />
+增加 `ShapeFlags` 两种类型。
+
+<CH.Code>
+```jsx demo.jsx focus=4,5
+const ShapeFlags = {
+	ELEMENT: 1,
+	STATEFUL_COMPONENT: 1 << 2,
+	TEXT_CHILDREN: 1 << 3,
+	ARRAY_CHILDREN: 1 << 4,
+}
+
+const mountElement = (vnode, container, anchor) => {
+	// focus[16:24]
+	const { type, shapeFlag, children, props } = vnode
+	const el = vnode.el = createElement(type)
+
+	// focus
+	if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+		setElementText(el, children)
+	// focus
+	} else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+		mountChildren(children, el, null)
+	}
+
+	for(const key in props) {
+		patchProp(el, key, '', props[key])
+	}
+	insert(container, el, anchor)
+}
+```
+</CH.Code>
+
+---
+
+不要忘记修改 `shapeFlag` 赋值的地方。
+
+<CH.Code>
+```jsx demo.jsx focus=19:30
+// focus
+const createVNode = (type, props, children) => {
+	const shapeFlag = isString(type)
+		? ShapeFlags.ELEMENT
+		: isObject(type)
+			? ShapeFlags.STATEFUL_COMPONENT
+			: 0
+
+	const vnode = {
+		type,
+		props,
+		children,
+		shapeFlag
+	}
+
+	// focus
+	normalizeChildren(vnode, children)
+
+	return vnode
+// focus
+}
+
+const normalizeChildren = (vnode, children) => {
+	let type = 0 
+
+	if (isArray(children)) {
+		type = ShapeFlags.ARRAY_CHILDREN
+	} else if (isString(children) || isNumber(children)) {
+		type = ShapeFlags.TEXT_CHILDREN
+	}
+
+	vnode.shapeFlag |= type
+}
+```
+</CH.Code>
+
+---
+
+处理完 `processElement` ，  
+接下来处理 `processComponent`。
+
+<CH.Code>
+```jsx demo.jsx
+const processComponent = (n1, n2, container, anchor) => {
+	if (!n1) {
+		mountComponent(n2, container, anchor)
+	}
+}
+```
+</CH.Code>
+
+---
+
+`挂载组件` 需要处理哪些事情？回顾下本文目标，
+`组件` 需要在初始化调用 `setup` 函数,
+需要 `render` 函数来渲染实际的节点，若 `setup` 返回值是 `函数`，
+则把返回值作为 `render` 函数。
+<br />
+明确逻辑后开始实现 `mountComponent`。
+
+<CH.Code>
+```jsx demo.jsx
+const createComponentInstance = vnode => {
+	const type = vnode.type
+	const instance = {
+		vnode,
+		type,
+	}
+	return instance
+}
+
+const mountComponent = (vnode, container, anchor) => {
+	const instance = vnode.component = createComponentInstance(vnode)
+
+	// TODO
+	setupComponent(instance)
+
+	const subTree = instance.subTree = instance.render()
+	patch(null, subTree, container, anchor)
+}
+```
+</CH.Code>
+
+---
+
+实现下 `setupComponent` 函数。
+
+<CH.Code>
+```jsx demo.jsx focus=1:28
+const setupComponent = instance => {
+	return setupStatefulComponent(instance)
+}
+
+const setupStatefulComponent = instance => {
+	const component = instance.type
+	const { setup } = component
+
+	if (setup) {
+		const setupResult = setup()
+		handleSetupResult(instance, setupResult)
+	} else {
+		finishSetupComponent(instance)
+	}
+}
+
+const handleSetupResult = (instance, setupResult) => {
+	if (isFunction(setupResult)) {
+		instance.render = setupResult
+	}
+	finishSetupComponent(instance)
+}
+
+const finishSetupComponent = (instance) => {
+	if (!instance.render) {
+		instance.render = instance.type.render
+	}
+}
+
+const mountComponent = (vnode, container, anchor) => {
+	const instance = vnode.component = createComponentInstance(vnode)
+
+	// focus
+	setupComponent(instance)
+
+	const subTree = instance.subTree = instance.render()
+	patch(null, subTree, container, anchor)
+}
+```
+</CH.Code>
+
+---
+
+处理完 `processComponent`，本文内容就告一段落。
+<br />
+合并下代码。
+
+<CH.Code>
+```jsx demo.jsx
+// from ./fullCode.js
+```
+</CH.Code>
+</CH.Scrollycoding>
+
+<div className="mt-20 text-lg text-white">
+总结  
+本篇实现了 `组件树` 的渲染逻辑，增加核心 `patch` 函数，用以分发处理不同类型
+`vnode`。在处理 `element` 和 `component` 时，预留 `update` 逻辑。方便
+后续逻辑处理。
+</div>

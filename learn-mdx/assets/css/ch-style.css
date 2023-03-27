@@ -99,6 +99,9 @@
 	@apply m-0;
 	min-height: calc(100vh - 1px);
 }
+.ch-scrollycoding-content {
+	@apply pb-[30vh]
+}
 .ch-scrollycoding-step-content {
 	@apply text-gray-400 flex flex-col justify-center text-lg my-8 max-w-[480px];
 }

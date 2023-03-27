@@ -4,6 +4,9 @@ import Step2 from './2.mdx'
 
 export default () => (
 	<>
+		<div className="h-screen flex justify-center items-center text-cyan-50 text-9xl">
+			hello Vue
+		</div>
 		<motion.div
 			transition={{ duration: 0.5 }}
 			initial={{ scale: 0, opacity: 0 }}
