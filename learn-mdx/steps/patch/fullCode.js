@@ -132,7 +132,6 @@ const ensureRenderer = (renderOptions) => {
 		createApp: function(rootComponent) {
 			return {
 				mount(selector) {
-					debugger
 					const container = document.querySelector(selector)
 					const vnode = h(rootComponent, {})
 
