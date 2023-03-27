@@ -4,34 +4,38 @@ import HFunc from './h-preview'
 
 变量 `template` 是无法直接被 `js` 使用，
 有经验的小伙伴也可以看出这是 `jsx` 的写法。
-不熟悉 `jsx` 的小伙伴，我们换一种写法也能表达。
+不熟悉 `jsx` 的小伙伴也没事，我们用 `js对象` 去描述这个 `节点`。
 
 <CH.Code>
-```html demo.html
-<html>
-	<body>
-		<div id="demo">
-			hello world
-		</div>
-	</body>
-	<script>
-		const template = document.getElementById('demo')
-	</script>
-<html>
+```jsx demo.jsx focus=1:7
+	const template = {
+		type: 'div',
+		props: {
+			id: 'demo'
+		},
+		children: 'hello world'
+	}
+
+	createApp({
+		render() {
+			return template
+		}
+	}).mount('#root')
 ```
 </CH.Code>
 
 ---
 
-之所以使用 `jsx` 是为了代码演示方便一些，这点不影响流程。
-<br />  
-我们声明一个函数 `h`，其返回值是 `js` 版的 `dom`。我们称其为 `virtual dom`，后续会缩写为 `vnode`。
+为了生成上面描述 `节点` 的对象，我们定义函数 `h` 来返回。
+我们称这个 `对象` 为 `virtual dom`，后续会缩写为 `vnode`。
 <br />  
 至于为什么需要 `vnode`。一来，`html` 节点的属性
 比较复杂，操作简化版的对象肯定来得 `轻松` 。二来，
 复杂的交互会让我们频繁的修改数据，拿着 `副本` 进行
 演练再实战肯定会 `高效` 一些。再者就是前端的战场
-不止是浏览器，`vnode` 到 `节点` 的转换也留了空间。
+不止是浏览器，`vnode` 到 `节点` 的转换可以存在操作空间。
+<br /> 
+之所以使用 `jsx` 是为了代码演示方便。
 
 <CH.Code showCopyButton>
 ```jsx demo.js
