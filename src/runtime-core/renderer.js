@@ -1,5 +1,5 @@
 import { ReactiveEffect } from "../reactive"
-import { ShapeFlag } from "../share"
+import { ShapeFlags } from "../share"
 import { PatchFlag } from "../share/patchFlag"
 import { createAppAPI } from "./apiCreateApp"
 import { createComponentInstance, setupComponent } from "./component"
@@ -43,7 +43,7 @@ export function createRenderer (nodeOps) {
 				processFragment(n1, n2, container, anchor, parentComponent, optimized)
 				break
 			default:
-				if (shapeFlag & ShapeFlag.ELEMENT) {
+				if (shapeFlag & ShapeFlags.ELEMENT) {
 					processElement(
 						n1,
 						n2,
@@ -52,7 +52,7 @@ export function createRenderer (nodeOps) {
 						parentComponent,
 						optimized
 					)
-				} else if (shapeFlag & ShapeFlag.STATEFUL_COMPONENT) {
+				} else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
 					processComponent(n1, n2, container, anchor, parentComponent, optimized)
 				}
 		}
@@ -351,14 +351,14 @@ export function createRenderer (nodeOps) {
 		// t n -> set
 		// n a -> mount
 		// n n
-		if (shapeFlag & ShapeFlag.TEXT_CHILDREN) {
-			if (preShapeFlag & ShapeFlag.ARRAY_CHILDREN) {
+		if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+			if (preShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
 				unmountChildren(c1, parentComponent, optimized)
 			}
 			c2 !== c1 && hostSetElementText(container, c2)
 		} else {
-			if (preShapeFlag & ShapeFlag.ARRAY_CHILDREN) {
-				if (shapeFlag & ShapeFlag.ARRAY_CHILDREN) {
+			if (preShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+				if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
 					patchKeyedChildren(
 						c1,
 						c2,
@@ -371,11 +371,11 @@ export function createRenderer (nodeOps) {
 					unmountChildren(c1, parentComponent, optimized)
 				}
 			} else {
-				if (preShapeFlag & ShapeFlag.TEXT_CHILDREN) {
+				if (preShapeFlag & ShapeFlags.TEXT_CHILDREN) {
 					hostSetElementText(container, '')
 				}
 
-				if (shapeFlag & ShapeFlag.ARRAY_CHILDREN) {
+				if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
 					mountChildren(c2, container, anchor, parentComponent, optimized)
 				}
 
@@ -672,9 +672,9 @@ export function createRenderer (nodeOps) {
 		const { type, shapeFlag, children, props } = vnode
 		let el = vnode.el = hostCreateElement(type)
 
-		if (shapeFlag & ShapeFlag.TEXT_CHILDREN) {
+		if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
 			hostSetElementText(el, children)
-		} else if (shapeFlag & ShapeFlag.ARRAY_CHILDREN) {
+		} else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
 			mountChildren(children, el, null, parentComponent)
 		}
 

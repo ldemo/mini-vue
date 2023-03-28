@@ -1,4 +1,4 @@
-import { ShapeFlag } from "../share"
+import { ShapeFlags } from "../share"
 import { cloneVNode, normalizeVNode } from "./vnode"
 
 export const renderComponentRoot = (instance) => {
@@ -9,7 +9,7 @@ export const renderComponentRoot = (instance) => {
 		const keys = Object.keys(attrs)
 		const { shapeFlag } = result
 		if (keys.length) {
-			if (shapeFlag & (ShapeFlag.ELEMENT | ShapeFlag.COMPONENT)) {
+			if (shapeFlag & (ShapeFlags.ELEMENT | ShapeFlags.COMPONENT)) {
 				result = cloneVNode(result, attrs)
 			}
 		}

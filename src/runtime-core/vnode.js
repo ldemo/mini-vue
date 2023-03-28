@@ -1,4 +1,4 @@
-import { isArray, isNumber, isObject, isOn, isString, ShapeFlag } from "../share"
+import { isArray, isNumber, isObject, isOn, isString, ShapeFlags } from "../share"
 import { normalizeClass, normalizeStyle } from "../share/normalizeProp"
 
 export const Text = Symbol('Text')
@@ -14,9 +14,9 @@ export function createVNode(
 ) {
 
 	const shapeFlag = isString(type)
-		? ShapeFlag.ELEMENT
+		? ShapeFlags.ELEMENT
 		: isObject(type)
-			? ShapeFlag.STATEFUL_COMPONENT
+			? ShapeFlags.STATEFUL_COMPONENT
 			: 0
 
 	return createBaseVNode(
@@ -74,9 +74,9 @@ export function normalizeChildren(vnode, children) {
 	let type = 0 
 
 	if (isArray(children)) {
-		type = ShapeFlag.ARRAY_CHILDREN
+		type = ShapeFlags.ARRAY_CHILDREN
 	} else if (isString(children) || isNumber(children)) {
-		type = ShapeFlag.TEXT_CHILDREN
+		type = ShapeFlags.TEXT_CHILDREN
 	}
 
 	vnode.children = children

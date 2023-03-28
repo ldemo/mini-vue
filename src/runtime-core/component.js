@@ -1,13 +1,13 @@
 import { reactive } from "../reactive"
 import { pauseTracking, resetTracking } from "../reactive/effect"
-import { camelize, hasOwn, isFunction, ShapeFlag } from "../share"
+import { camelize, hasOwn, isFunction, ShapeFlags } from "../share"
 import { emit, normalizeEmitsOptions } from "./componentEmits"
 import { normalizePropsOptions } from "./componentProps"
 import { PublicInstanceProxyHandler } from "./componentPublicInstance"
 
 export const setupComponent = (instance) => {
 	const { props, children } = instance.vnode
-	const isStateful = instance.vnode.shapeFlag & ShapeFlag.STATEFUL_COMPONENT
+	const isStateful = instance.vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT
 
 	initProps(instance, props)
 	initSlots(instance, children)

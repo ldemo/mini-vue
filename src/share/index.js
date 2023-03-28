@@ -8,7 +8,7 @@ export const isArray = Array.isArray
 export const isOn = key => /^on[^a-z]/.test(key)
 
 export const hasOwn = (val, key) => hasOwnProperty.call(val, key)
-export const ShapeFlag = {
+export const ShapeFlags = {
 	ELEMENT: 1,
 	STATEFUL_COMPONENT: 1 << 2,
 	TEXT_CHILDREN: 1 << 3,
@@ -24,4 +24,4 @@ export const capitalize = str => str.charAt(0).toUpperCase() + str.slice(1)
 
 export const toHandlerKey = str => str ? `on${capitalize(str)}` : ``
 
-window.ShapeFlag = ShapeFlag
+window.ShapeFlags = ShapeFlags
