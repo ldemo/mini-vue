@@ -63,7 +63,10 @@ export default (props) => {
 				{props.articles?.map((item, i) => (
 					<motion.li
 						key={i}
-						onClick={() => props.setActive(i)}
+						onClick={() => {
+							props.setActive(i)
+							toggleOpen()
+						}}
 						className={`mb-5 flex justify-start items-center text-lg cursor-pointer ${item.path === props.active ? 'text-green-300' : 'text-cyan-50'}`}
 						variants={{
 							open: {
