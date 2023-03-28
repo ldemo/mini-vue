@@ -1,16 +1,35 @@
 import "@code-hike/mdx/styles"
-import sideBarImg from '/sidebar.png'
 import CreateAppAndVNode from './steps/createAppAndVNode/index'
 import Patch from './steps/patch'
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import Nav from './nav'
 
+const articles = [
+	{
+		name: 'createApp-初始化渲染',
+		path: 'createApp'
+	},
+	{
+		name: 'patch-复杂渲染处理',
+		path: 'patch'
+	}
+]
 function App() {
-	const blogList = [
-		'',
-		'createApp-初始化渲染',
-		'patch-复杂渲染处理'
-	]
-	const [active, setActive] = useState(1)
+	const [activeRoutePath, setActiveRoutePath] = useState('')
+	const [activeIndex, setActiveIndex] = useState(0)
+
+	useEffect(() => {
+		handleChangeRoutePath()
+	}, [])
+
+	const handleChangeRoutePath = () => {
+		let path = location.pathname.replace(/\/mini-vue\/?/, '')
+		let pathList = articles.map(v => v.path)
+		let active = pathList.includes(path) ? path : articles[0].path
+
+		setActiveRoutePath(active)
+		setActiveIndex(pathList.indexOf(active))
+	}
 
 	const scrollToTop = () => {
 		const scrollTop = document.scrollingElement.scrollTop
@@ -20,12 +39,19 @@ function App() {
 		}
 	}
 
-	const changePage = (num) => {
-		setActive(num)
+	const changePage = (idx) => {
+		history.pushState(null, '', `/mini-vue/${articles[idx].path}`)
+		handleChangeRoutePath()
 		scrollToTop()
 	}
+
   return (
 		<div className="min-h-screen antialiased text-slate-400 bg-slate-900">
+			<Nav
+				articles={articles}
+				active={activeRoutePath}
+				setActive={changePage}
+			/>
 			{/* <div>
 				<div className="absolute top-6 left-8 right-8 flex items-center justify-between text-xl text-slate-200">
 					<div className="flex items-center">
@@ -50,20 +76,20 @@ function App() {
 				</div>
 			</div> */}
 			<div className="max-w-[1200px] mx-auto">
-				{ active === 1 && <CreateAppAndVNode />}
-				{ active === 2 && <Patch />}
+				{ activeRoutePath === 'createApp' && <CreateAppAndVNode />}
+				{ activeRoutePath === 'patch' && <Patch />}
 				<div className="flex justify-between mt-20 text-cyan-50 text-xl">
 					{
-						blogList[active - 1]
-							? <div className="cursor-pointer hover:text-green-300" onClick={() => changePage(active - 1)}>
-									{`上一篇：${blogList[active - 1]}`}
+						articles[activeIndex - 1]
+							? <div className="cursor-pointer hover:text-green-300" onClick={() => changePage(activeIndex - 1)}>
+									{`上一篇：${articles[activeIndex - 1].name}`}
 								</div>
 							: <div />
 					}
 					{
-						blogList[active + 1] &&
-							<div className="cursor-pointer hover:text-green-300" onClick={() => changePage(active + 1)}>
-								{`下一篇：${blogList[active + 1]}`}
+						articles[activeIndex + 1] &&
+							<div className="cursor-pointer hover:text-green-300" onClick={() => changePage(activeIndex + 1)}>
+								{`下一篇：${articles[activeIndex + 1].name}`}
 							</div>
 					}
 				</div>
