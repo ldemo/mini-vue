@@ -39,18 +39,18 @@ export default (props) => {
 	
   return (
     <motion.nav
-			className="fixed top-0 left-0 bottom-0 w-64 z-10"
+			className="fixed top-0 left-0 w-64 z-10"
       initial={false}
       animate={isOpen ? "open" : "closed"}
       custom={height}
       ref={containerRef}
     >
-      <motion.div
-				className="fixed top-0 left-0 bottom-0 w-64 bg-slate-800 bg-opacity-80 shadow-[2px_0_8px_-6px_rgba(255,255,255,1)]"
+			<motion.div
+				className={`fixed top-0 left-0 bottom-0 w-64 bg-slate-800 bg-opacity-80 shadow-[2px_0_8px_-6px_rgba(255,255,255,1)]`}
 				variants={sidebar}
 			/>
-      <motion.ul
-				className="fixed top-24 p-6 z-10 list-none"
+			<motion.ul
+				className="fixed top-24 p-6 list-none"
 				variants={{
 					open: {
 						transition: { staggerChildren: 0.07, delayChildren: 0.05}
@@ -71,14 +71,14 @@ export default (props) => {
 						variants={{
 							open: {
 								y: 0,
-								opacity: 1,
+								display: 'flex',
 								transition: {
 									y: { stiffness: 1000, velocity: -100 }
 								}
 							},
 							closed: {
 								y: 50,
-								opacity: 0,
+								display: 'none',
 								transition: {
 									y: { stiffness: 1000 }
 								}
