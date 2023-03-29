@@ -1,6 +1,7 @@
 import "@code-hike/mdx/styles"
 import CreateAppAndVNode from './steps/createAppAndVNode/index'
 import Patch from './steps/patch'
+import Reactive from './steps/reactive'
 import { useEffect, useState } from "react"
 import Nav from './nav'
 
@@ -12,6 +13,10 @@ const articles = [
 	{
 		name: 'patch-复杂渲染处理',
 		path: 'patch'
+	},
+	{
+		name: 'reactive-响应式式核心',
+		path: 'reactive'
 	}
 ]
 function App() {
@@ -23,7 +28,7 @@ function App() {
 	}, [])
 
 	const handleChangeRoutePath = () => {
-		let path = location.pathname.replace(/\/mini-vue\/?/, '')
+		let path = location.hash.replace('#', '')
 		let pathList = articles.map(v => v.path)
 		let active = pathList.includes(path) ? path : articles[0].path
 
@@ -40,7 +45,7 @@ function App() {
 	}
 
 	const changePage = (idx) => {
-		history.pushState(null, '', `/mini-vue/${articles[idx].path}`)
+		history.pushState(null, '', `/mini-vue#${articles[idx].path}`)
 		handleChangeRoutePath()
 		scrollToTop()
 	}
@@ -78,6 +83,7 @@ function App() {
 			<div className="max-w-[1200px] mx-auto">
 				{ activeRoutePath === 'createApp' && <CreateAppAndVNode />}
 				{ activeRoutePath === 'patch' && <Patch />}
+				{ activeRoutePath === 'reactive' && <Reactive />}
 				<div className="flex justify-between mt-20 text-cyan-50 text-xl">
 					{
 						articles[activeIndex - 1]
