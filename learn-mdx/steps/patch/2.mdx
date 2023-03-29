@@ -409,6 +409,7 @@ const mountComponent = (vnode, container, anchor) => {
 
 	const subTree = instance.subTree = instance.render()
 	patch(null, subTree, container, anchor)
+	vnode.el = subTree.el
 }
 ```
 </CH.Code>
@@ -456,6 +457,7 @@ const mountComponent = (vnode, container, anchor) => {
 
 	const subTree = instance.subTree = instance.render()
 	patch(null, subTree, container, anchor)
+	vnode.el = subTree.el
 }
 ```
 </CH.Code>

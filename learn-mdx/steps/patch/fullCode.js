@@ -92,6 +92,7 @@ const ensureRenderer = (renderOptions) => {
 	
 		const subTree = instance.subTree = instance.render()
 		patch(null, subTree, container, anchor)
+		vnode.el = subTree.el
 	}
 
 	const processElement = (n1, n2, container, anchor) => {
