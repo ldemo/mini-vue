@@ -1,23 +1,19 @@
-<CH.Section className="mb-20" showCopyButton={true}>
+<CH.Section className="mb-20">
 前文我们实现了 `patch` 函数中对 `element`、`component` 类型的 `vnode`
-的 `mount` 逻辑。那本文，开始解决 `update` 的问题。  
-那本文响应式的核心就是基于 `Proxy`。
+的 `mount` 逻辑。那接下来需要解决 `update` 的问题。  
+由于 `update` 内容较多，本文处理的是触发 `update` 的动作。
 <br />
 明确本文的目标。  
-[第一步，`setup` 函数返回响应式数据 `msg` 并初次渲染。](focus://demo.jsx#2:3,5:7,11)  
-[第二步，`setTimeout` 触发，`组件` 重新渲染。](focus://demo.jsx#4,11)
+[第一步，`setup` 函数中定义响应式数据 `msg`。](focus://demo.jsx#2:3,6:9)  
+[第二步，`setTimeout` 触发响应式数据变更，`组件` 开始执行 `update`。](focus://demo.jsx#4,7)
 <CH.Code>
 ```jsx demo.jsx
 createApp({
 	setup() {
 		const msg = reactive({ value: 'hello world' })
 		setTimeout(() => msg.value = 'data changed', 2000)
-		return {
-			msg
-		}
-	}
-	render() {
-		return (
+
+		return () => (
 			<div>{ msg.value }</div>
 		)
 	}

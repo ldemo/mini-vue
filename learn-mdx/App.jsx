@@ -15,7 +15,7 @@ const articles = [
 		path: 'patch'
 	},
 	{
-		name: 'reactive-响应式式核心',
+		name: 'reactive-响应式核心',
 		path: 'reactive'
 	}
 ]

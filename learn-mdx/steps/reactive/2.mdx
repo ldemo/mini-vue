@@ -1,8 +1,407 @@
 <CH.Scrollycoding showCopyButton={true} showExpandButton={false}>
-阿斯顿
+我们声明函数 `reactive`，该函数的返回值是 `响应式的数据`。那什么叫 `响应式数据`。
+<br />
+可以这么理解，定义变量 `msg` 和函数 `fn`，当 `msg.value` 改变时，`fn` 函数可以自行调用。
+
 <CH.Code>
 ```jsx demo.jsx
-1
+const msg = { value: 'hello world' }
+const fn = () => {
+	console.log('feel something has beed changed')
+}
+
+// auto call fn
+msg.value = 'data changed'
+```
+</CH.Code>
+
+---
+
+如果仅是达到上面的效果，代码这么写。
+<CH.Code>
+```jsx demo.jsx
+const reactive = (obj, cb) => {
+	return new Proxy(obj, {
+		set(target, key, val, receiver) {
+			const res = Reflect.set(target, key, val, receiver)
+			cb()
+			return res
+		}
+	})
+}
+
+const msg = reactive(
+	{ value: 'hello world' },
+	() => console.log(`feel something has beed changed`)
+)
+msg.value = 'data changed'
+```
+</CH.Code>
+
+---
+
+如果是这么实现的，那 `reactive` 的使用者就需要手动填入 `cb`，
+也就是组件的 `update` 函数。这显然是不行的。
+<br />
+换一种思路，`reactive` 在 `setup` 中执行，而 `setup` 会在
+组件 `mount` 的时候去执行。那刚好可以在组件 `mount` 时，
+将组件的 `update` 函数赋值给变量 `activeEffect`。这样就不用传入了。
+
+<CH.Code>
+```jsx demo.jsx
+let activeEffect
+
+const reactive = (obj) => {
+	return new Proxy(obj, {
+		set(target, key, val, receiver) {
+			const res = Reflect.set(target, key, val, receiver)
+			activeEffect()
+			return res
+		}
+	})
+}
+const setup = () => {
+	const msg = reactive({ value: 'hello world' })
+	setTimeout(() => msg.value = 'data changed')
+}
+const mountComponent = () => {
+	const update = () => console.log('feel something has beed changed')
+	activeEffect = update
+	setup()
+}
+
+mountComponent()
+
+```
+</CH.Code>
+
+---
+
+页面总不至于是一个组件吧。`activeEffect` 会在多个组件 `mount` 时不断被
+重写。所以稍微调整下。
+<CH.Code>
+```jsx demo.jsx focus=4,8
+let activeEffect
+
+const reactive = (obj) => {
+	let _effect = activeEffect
+	return new Proxy(obj, {
+		set(target, key, val, receiver) {
+			const res = Reflect.set(target, key, val, receiver)
+			_effect()
+			return res
+		}
+	})
+}
+const setup = () => {
+	const msg = reactive({ value: 'hello world' })
+	setTimeout(() => msg.value = 'data changed')
+}
+const mountComponent = () => {
+	const update = () => console.log('feel something has beed changed')
+	activeEffect = update
+	setup()
+}
+
+mountComponent()
+
+```
+</CH.Code>
+
+---
+
+`reactive` 已经能够收集组件的 `update` 的能力，那是不是又都有触发组件 `update` 的责任呢。
+<br />
+好像并不尽然，`count` 变量的值变更便不必触发组件的更新。
+
+<CH.Code>
+```jsx demo.jsx
+const comp = {
+	setup() {
+		const count = reactive({ value: 0 })
+		setTimeout(() => count.value = 1)
+		
+		return () => (
+			<div>static content</div>
+		)
+	}
+}
+```
+</CH.Code>
+
+---
+
+所以收集组件 `update` 的动作，应该是这个 `响应式数据` 被使用的时候。
+也就是 `get`。
+
+<CH.Code>
+```jsx demo.jsx
+let activeEffect
+
+const reactive = (obj) => {
+	let _effect
+	return new Proxy(obj, {
+		get(target, key, receiver) {
+			const res = Reflect.get(target, key, receiver)
+			_effect = activeEffect
+			return res
+		},
+		set(target, key, val, receiver) {
+			const res = Reflect.set(target, key, val, receiver)
+			_effect && _effect()
+			return res
+		}
+	})
+}
+const setup = () => {
+	const msg = reactive({ value: 'hello world' })
+	setTimeout(() => msg.value = 'data changed')
+	return () => console.log(msg.value)
+}
+const mountComponent = () => {
+	const update = () => console.log('feel something has beed changed')
+	activeEffect = update
+	const setupResult = setup()
+	setupResult()
+}
+
+mountComponent()
+```
+</CH.Code>
+
+---
+
+那如果赋值的不是使用到的key，也不应该触发。这里就只处理简单对象，不处理 `get` 返回
+仍是 `对象` 等场景。
+<br />
+改造一下。
+
+<CH.Code>
+```jsx demo.jsx
+const proxyMap = new WeakMap()
+export const reactive = (target) => {
+	if (proxyMap.get(target)) {
+		return proxyMap.get(target)
+	}
+
+	let proxy = new Proxy(target, {
+		get(target, key, receiver) {
+			const res = Reflect.get(target, key, receiver)
+			// TODO
+			track(target, key)
+			return res
+		},
+
+		set(target, key, val, receiver) {
+			const res = Reflect.set(target, key, val, receiver)
+			// TODO
+			trigger(target, key)
+			return res
+		}
+	})
+
+	proxyMap.set(target, proxy)
+	return proxy
+}
+```
+</CH.Code>
+
+---
+
+实现下 `track`，`trigger` 函数。
+
+<CH.Code>
+```jsx demo.jsx
+let activeEffect = undefined
+const targetMap = new WeakMap()
+
+const track = (target, key) => {
+	if (activeEffect) {
+		let depsMap = targetMap.get(target)
+		if (!depsMap) {
+			targetMap.set(target, (depsMap = new Map()))
+		}
+
+		let dep = depsMap.get(key)
+
+		if (!dep) {
+			depsMap.set(key, (dep = new Set()))
+		}
+
+		if (!dep.has(activeEffect)) {
+			dep.add(activeEffect)
+		}
+	}
+}
+
+const trigger = (target, key) => {
+	const depsMap = targetMap.get(target)
+	if (!depsMap) return
+
+	const deps = depsMap.get(key)
+	if (!deps) return
+
+	deps.forEach(v => v.run())
+}
+```
+</CH.Code>
+
+---
+
+实现下 `activeEffect` 的本体，将待执行函数放入 `run` 方法。
+让组件 `mount` 时赋值 `activeEffect`。
+
+<CH.Code>
+```jsx demo.jsx focus=1:13
+class ReactiveEffect {
+	_fn = null
+
+	constructor(fn) {
+		this._fn = fn
+	}
+
+	run() {
+		activeEffect = this
+		this._fn()
+		activeEffect = null
+	}
+}
+
+const trigger = (target, key) => {
+	const depsMap = targetMap.get(target)
+	if (!depsMap) return
+
+	const deps = depsMap.get(key)
+	if (!deps) return
+
+	// focus
+	deps.forEach(v => v.run())
+}
+
+```
+</CH.Code>
+
+---
+
+回顾下上一篇文章实现的 `mountComponent` 实现。
+
+<CH.Code>
+```jsx demo.jsx
+const mountComponent = (vnode, container, anchor) => {
+	const instance = vnode.component = createComponentInstance(vnode)
+
+	setupComponent(instance)
+
+	const subTree = instance.subTree = instance.render()
+	patch(null, subTree, container, anchor)
+	vnode.el = subTree.el
+}
+```
+</CH.Code>
+
+---
+
+结合本文实现 `响应式` 的方式，改造下 `mountComponent` 方法。
+
+<CH.Code>
+```jsx demo.jsx focus=6:11,14:16,20:30
+const mountComponent = (vnode, container, anchor) => {
+	const instance = vnode.component = createComponentInstance(vnode)
+
+	setupComponent(instance)
+
+	setupRenderEffect(
+		instance,
+		vnode,
+		container,
+		anchor
+	)
+}
+
+const setupRenderEffect = (instance, vnode, container, anchor) => {
+	const componentUpdateFn = () => {
+		if (!instance.isMounted) {
+			const subTree = instance.subTree = instance.render()
+			patch(null, subTree, container, anchor)
+			vnode.el = subTree.el
+			instance.isMounted = true
+		} else {
+			// update logic
+		}
+	}
+
+	const update = instance.update = () => effect.run()
+	const effect = new ReactiveEffect(componentUpdateFn)
+
+	update()
+}
+```
+</CH.Code>
+
+--- 
+
+那这个 `update` 逻辑不就差临门一脚了嘛。
+
+<CH.Code>
+```jsx demo.jsx focus=22:33
+const mountComponent = (vnode, container, anchor) => {
+	const instance = vnode.component = createComponentInstance(vnode)
+
+	setupComponent(instance)
+
+	setupRenderEffect(
+		instance,
+		vnode,
+		container,
+		anchor
+	)
+}
+
+const setupRenderEffect = (instance, vnode, container, anchor) => {
+	const componentUpdateFn = () => {
+		if (!instance.isMounted) {
+			const subTree = instance.subTree = instance.render()
+			patch(null, subTree, container, anchor)
+			vnode.el = subTree.el
+			instance.isMounted = true
+		} else {
+			const nextTree = instance.render()
+			const prevTree = instance.subTree
+			instance.subTree = nextTree
+
+			// TODO patch
+			patch(
+				prevTree,
+				nextTree,
+				hostParentNode(prevTree.el),
+				hostNextSibling(prevTree.anchor || prevTree.el)
+			)
+			next.el = nextTree.el
+		}
+	}
+
+	const update = instance.update = () => effect.run()
+	const effect = new ReactiveEffect(componentUpdateFn)
+
+	update()
+}
+
+```
+</CH.Code>
+
+---
+
+合并下本文响应式核心代码
+
+<CH.Code>
+```jsx demo.jsx
+// from ./fullCode.js
 ```
 </CH.Code>
 </CH.Scrollycoding>
+
+<div className="mt-20 text-lg text-white">
+总结  
+本篇简单实现了响应式函数 `reactive`，并对 `component` 触发更新的时机
+进行编码。当然响应式核心代码的逻辑分支肯定不止这么些，有兴趣的小伙伴可以自行实现。
+</div>
