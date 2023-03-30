@@ -3,6 +3,7 @@ import CreateAppAndVNode from './steps/createAppAndVNode/index'
 import Patch from './steps/patch'
 import Reactive from './steps/reactive'
 import { useEffect, useState } from "react"
+import 'css-doodle'
 import Nav from './nav'
 
 const articles = [
@@ -45,13 +46,18 @@ function App() {
 	}
 
 	const changePage = (idx) => {
+		updateBottomFlowers()
 		history.pushState(null, '', `/mini-vue#${articles[idx].path}`)
 		handleChangeRoutePath()
 		scrollToTop()
 	}
 
+	const updateBottomFlowers = () => {
+		document.querySelectorAll('css-doodle').forEach(function(o){ o.update() })
+	}
+
   return (
-		<div className="min-h-screen antialiased text-slate-400 bg-slate-900">
+		<div className="min-h-screen antialiased text-slate-400">
 			<Nav
 				articles={articles}
 				active={activeRoutePath}

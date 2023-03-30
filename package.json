@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-	"type": "module",
+  "type": "module",
   "scripts": {
     "dev": "vite dev",
-		"build": "vite build",
+    "build": "vite build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -14,6 +14,7 @@
   "dependencies": {
     "@code-hike/mdx": "^0.8.0",
     "@mdx-js/rollup": "^2.3.0",
+    "css-doodle": "0.34.6",
     "framer-motion": "^10.8.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

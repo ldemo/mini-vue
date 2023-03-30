@@ -694,6 +694,11 @@ convert-source-map@^1.7.0:
   resolved "https://registry.npmmirror.com/convert-source-map/-/convert-source-map-1.9.0.tgz#7faae62353fb4213366d0ca98358d22e8368b05f"
   integrity sha512-ASFBup0Mz1uyiIjANan1jzLQami9z1PoYSZCiiYW2FczPbenXc45FZdBZLzOT+r6+iciuEModtmCti+hjaAk0A==
 
+css-doodle@0.34.6:
+  version "0.34.6"
+  resolved "https://registry.npmmirror.com/css-doodle/-/css-doodle-0.34.6.tgz#c9250c6144a2277d570577076fef6fb6c7bdedfd"
+  integrity sha512-BOkIwYT58jjLTWujfMjfqjuHEXNf3kvkfUVgCCu9XMfScqo6LFnQ5Dr59ZO3xmq/xt+s1IIQosNjDfGQOFDX6A==
+
 cssesc@^3.0.0:
   version "3.0.0"
   resolved "https://registry.npmmirror.com/cssesc/-/cssesc-3.0.0.tgz#37741919903b868565e1c09ea747445cd18983ee"
