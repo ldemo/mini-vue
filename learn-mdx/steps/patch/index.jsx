@@ -1,9 +1,9 @@
-import Step1 from './1.mdx'
-import Step2 from './2.mdx'
+import Topic from './topic.mdx'
+import Content from './content.mdx'
 
 export default () => (
 	<div className="pt-20">
-		<Step1 />
-		<Step2 />
+		<Topic />
+		<Content />
 	</div>
 )

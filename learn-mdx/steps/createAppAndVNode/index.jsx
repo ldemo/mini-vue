@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
-import Step1 from './1.mdx'
-import Step2 from './2.mdx'
+import Topic from './topic.mdx'
+import Content from './content.mdx'
 
 export default () => (
 	<>
@@ -12,8 +12,8 @@ export default () => (
 			initial={{ scale: 0, opacity: 0 }}
 			whileInView={{ scale: 1, opacity: 1 }}
 		>
-			<Step1 />
+			<Topic />
 		</motion.div>
-		<Step2 />
+		<Content />
 	</>
 )
