@@ -7,11 +7,104 @@
 	<title>hello</title>
 	<!-- <script type="module" src="./learn-mdx/steps/patch/fullCode.js"></script> -->
 	
-  <script type="module" crossorigin src="/mini-vue/assets/index-10e8b8c4.js"></script>
-  <link rel="stylesheet" href="/mini-vue/assets/index-b6331f62.css">
+  <script type="module" crossorigin src="/mini-vue/assets/index-b8157edc.js"></script>
+  <link rel="stylesheet" href="/mini-vue/assets/index-2f77d8b7.css">
 </head>
-<body>
-	<div id="root">
+<body class="bg-slate-900">
+	<div id="root" class="relative z-10">
+	</div>
+	<div class="fixed left-0 right-0 bottom-0 h-72 flex justify-center items-end z-[2] opacity-30">
+		<css-doodle>
+			:doodle {
+				flex: none;
+				@grid: 16x1;
+				@size: 500px;
+				contain: unset;
+			}
+			--transform: scale(@r(.8, 1.2)) translateX(@r(-200%, 200%)) translateY(@r(-5%, 35%));
+			z-index: 2;
+			color: @pn(#fff, #8b4480, #f9d51e, #36a47b, #7db13c, #ea695c, #0059b2, #74a9c3);
+			transform-origin: 50% 100%;
+			transform: var(--transform);
+		
+			::before {
+				position: absolute;
+				bottom: 152px;
+				left: -8px;
+				content: "✿";
+				font-size: 60px;
+				-webkit-text-stroke: 1.6px;
+			}
+			::after {
+				position: absolute;
+				bottom: 30px;
+				left: 0;
+				content: "(";
+				font-size: 80px;
+				transform: rotate(60deg) skew(60deg) scale(1.2, 1.8);
+			}
+			@random {
+				::after {
+					content: ")";
+					left: 9px;
+					bottom: 15px;
+				}
+			}
+			@nth(1, 3, 9, 16) {
+				::after {
+					content: "(";
+					bottom: 30px;
+					left: 0;
+				}
+				animation: swingLeft @r(1.5, 3)s ease infinite alternate both;
+				::before {
+					animation: beforeLeft @lr()s ease infinite alternate both;
+				}
+			}
+			@nth(5, 7, 15) {
+				::after {
+					content: ")";
+					left: 9px;
+					bottom: 15px;
+				}
+				animation: swing @r(1.5, 3)s ease infinite alternate both;
+				::before {
+					animation: before @lr()s ease infinite alternate both;
+				}
+			}
+			@keyframes swingLeft {
+				0% {
+					transform: var(--transform) rotate(0deg);
+				}
+				100% {
+					transform: var(--transform) rotate(7deg);
+				}
+			}
+			@keyframes beforeLeft {
+				0% {
+					transform: rotate(0deg);
+				}
+				100% {
+					transform: rotate(7deg);
+				}
+			}
+			@keyframes swing {
+				0% {
+					transform: var(--transform) rotate(0deg);
+				}
+				100% {
+					transform: var(--transform) rotate(-7deg);
+				}
+			}
+			@keyframes before {
+				0% {
+					transform: rotate(0deg);
+				}
+				100% {
+					transform: rotate(-7deg);
+				}
+			}
+		</css-doodle>
 	</div>
 </body>
 </html>
