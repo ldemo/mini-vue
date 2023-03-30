@@ -25,6 +25,7 @@ function App() {
 	const [activeIndex, setActiveIndex] = useState(0)
 
 	useEffect(() => {
+		document.querySelector('#showFlowersWithRootMount').style.display = 'flex'
 		handleChangeRoutePath()
 	}, [])
 
