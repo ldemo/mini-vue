@@ -2,6 +2,7 @@ import "@code-hike/mdx/styles"
 import CreateAppAndVNode from './steps/createAppAndVNode/index'
 import Patch from './steps/patch'
 import Reactive from './steps/reactive'
+import UpdateProps from './steps/updateProps'
 import { useEffect, useState } from "react"
 import 'css-doodle'
 import Nav from './nav'
@@ -18,6 +19,10 @@ const articles = [
 	{
 		name: 'reactive-响应式核心',
 		path: 'reactive'
+	},
+	{
+		name: 'updateProps-基本属性处理',
+		path: 'updateProps'
 	}
 ]
 function App() {
@@ -91,6 +96,7 @@ function App() {
 				{ activeRoutePath === 'createApp' && <CreateAppAndVNode />}
 				{ activeRoutePath === 'patch' && <Patch />}
 				{ activeRoutePath === 'reactive' && <Reactive />}
+				{ activeRoutePath === 'updateProps' && <UpdateProps />}
 				<div className="flex justify-between mt-20 text-cyan-50 text-xl">
 					{
 						articles[activeIndex - 1]
