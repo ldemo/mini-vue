@@ -2,12 +2,14 @@ import HFunc from './h-preview'
 
 <CH.Scrollycoding showCopyButton={true} showExpandButton={false}>
 
-变量 `template` 是无法直接被 `js` 使用，
-有经验的小伙伴也可以看出这是 `jsx` 的写法。
-不熟悉 `jsx` 的小伙伴也没事，我们用 `js对象` 去描述这个 `节点`。
-
+例子中 `App` 是 `单文件组件` 的写法，不是正经意义上的 `js`。
+日常开发中因为有 `转换工具` 帮我们处理了，使得我们不需要关注。
+<br />
+鉴于本系列的初衷，这个 `核心` 逻辑是需要了解的。但不是现在。
+<br />
+我们先用 `js对象` 描述节点信息，并于 `App` 的 `render` 函数中返回。
 <CH.Code>
-```jsx demo.jsx focus=1:7
+```jsx demo.jsx focus=1:13
 	const template = {
 		type: 'div',
 		props: {
@@ -16,26 +18,26 @@ import HFunc from './h-preview'
 		children: 'hello world'
 	}
 
-	createApp({
+	const App = {
 		render() {
 			return template
 		}
-	}).mount('#root')
+	}
+
+	createApp(App).mount('#root')
 ```
 </CH.Code>
 
 ---
 
-为了生成上面描述 `节点` 的对象，这里定义一个函数 `h` 来返回。
-我们称这个返回的 `对象` 为 `virtual dom`，后续会缩写为 `vnode`。
+我们称这个 `js对象` 叫 `virtual dom`，后续缩写为 `vnode`。
+为了生成这个对象，这里定义一个函数 `h` 来返回。
 <br />  
 至于为什么需要 `vnode`。一来，`html` 节点的属性
 比较复杂，操作简化版的对象肯定来得 `轻松` 。二来，
 复杂的交互会让我们频繁的修改数据，拿着 `副本` 进行
 演练再实战肯定会 `高效` 一些。再者就是前端的战场
 不止是浏览器，`vnode` 到 `节点` 的转换可以存在操作空间。
-<br /> 
-之所以使用 `jsx` 是为了代码演示方便。
 
 <CH.Code showCopyButton>
 ```jsx demo.js
@@ -81,8 +83,8 @@ const h = (type, props, children) => {
 
 ---
 
-日常开发中，组件又是不可或缺的位置，  
-那组件的 `vnode` 该如何？
+用 `vnode` 来描述 `节点`，那自然组件也不例外。  
+长什么样子呢？
 <br />
 是这样！
 
@@ -98,8 +100,8 @@ const h = (type, props, children) => {
 
 	// 定义组件
 	const Comp = () => {
-		setup() {
-			return () => h('div', {}, [
+		render() {
+			return h('div', {}, [
 				h('div', { class: 'demo' }, null)
 			])
 		}
@@ -126,9 +128,9 @@ const h = (type, props, children) => {
 
 	// 定义组件
 	const Comp = () => {
-		setup() {
-			// mark[26:27]
-			return () => h('div', {}, [
+		render() {
+			// mark[20:21]
+			return h('div', {}, [
 				// mark[33:36]
 				h('div', { class: 'demo' }, null)
 			])

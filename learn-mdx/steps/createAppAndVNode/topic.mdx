@@ -1,4 +1,4 @@
-<CH.Section className="mb-20">
+<CH.Section className="mb-5">
 本系列主要学习以 `Vue` 为模版的前端框架技术，`逐步` 实现 `Vue` 的核心原理。
 <br/>
 在混沌初开的年代，`document.getElementById` 等方法是操作 `DOM` 最常见的手段。
@@ -8,17 +8,24 @@
 （`tips`：代码会尽量对齐 `Vue` 源码，方便自行学习源码。）
 <br />
 下面进入正文，明确目标。  
-[第一步，定义 `template` 表示渲染内容](focus://demo.js#1[2:42])  
-[第二步， 创建 `vue` 实例，并挂载](focus://demo.js#3:7)
+第一步，定义 `App` 组件。    
+第二步，创建 `vue` 实例，并挂载。
 <CH.Code>
-```jsx demo.js
-	const template = <div id="demo">hello world</div>
+```vue App.vue
+<template>
+	<div id="demo">hello world</div>
+</template>
 
-	createApp({
-		render() {
-			return template
-		}
-	}).mount('#root')
+<script>
+	export default {}
+</script>
 ```
 </CH.Code>
 </CH.Section>
+<CH.Code className="mb-20">
+```js main.js
+	import App from './App.vue'
+
+	createApp(App).mount('#root')
+```
+</CH.Code>
