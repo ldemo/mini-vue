@@ -1,12 +1,5 @@
 <CH.Scrollycoding showCopyButton={true} showExpandButton={false}>
-先对 `节点` 进行 `vnode` 转化，那日常开发中又没有手写 `vnode` 
-转化函数，又是如何实现转化的呢？
-<br />
-这点，我们的 `构建工具` 中会集成一些转化的工具去处理这类事情，比如 `babel` 这些。
-<br />
-当然，后面的文章也会对 `节点` 到 `vnode` 的转化流程做深入的了解,
-这里我们暂且忽略。
-
+先用 `h` 函数对代码进行转换，按照惯例先不关心是如何进行转换。
 <CH.Code>
 ```jsx demo.jsx focus=13:16
 const Comp = {
@@ -82,7 +75,7 @@ createApp({
 这显然是不可以的。  
 需要对 `组件` 和 `节点` 进行区别对待！
 <br />
-这里定义 `ShapeFlags`，改造 `createVNode` 函数。
+引入 `ShapeFlags` 区分类型，改造 `createVNode`。
 
 <CH.Code>
 ```jsx demo.jsx focus=1:4,10:14
@@ -115,8 +108,10 @@ const createVNode = (type, props, children) => {
 
 ---
 
-同时也要改造 `render` 函数，
+定义完类型后就是如何使用。改造下 `render` 函数，
 定义 `patch` 函数，对不同 `节点` 进行分发处理。
+<br />
+这个 `patch` 很重要！
 
 ```jsx demo.jsx focus=13:21
 	const ensureRenderer = (renderOptions) => {
@@ -194,7 +189,8 @@ shapeFlag & ShapeFlags.STATEFUL_COMPONENT
 
 ---
 
-回归原来的 `patch` 函数，先实现下 `processElement` 函数。
+回归原来的 `patch` 函数，先对 `Element` 类型 `vnode` 进行处理。
+实现下 `processElement` 函数。
 
 <CH.Code>
 ```jsx demo.jsx
@@ -234,7 +230,8 @@ const mountChildren = (children, el) => {
 <br />
 同时，如果子节点是数组，那如何定位要插入的位置呢？
 所以需要增加 `anchor` 来定位。
-趁现在代码量还不多，改造，改造。
+<br />
+所以 `patch` 流程需要增加 `anchor` 并预留 `update` 逻辑。 
 
 ```jsx demo.jsx focus=15:21
 const render = (vnode, container) => {
@@ -288,11 +285,12 @@ const mountChildren = (children, el, anchor) => {
 
 ---
 
-对于 `节点` 的处理，不难看出处理 `children` 是每个
-`节点` 都需要面对的。那 `children` 不外乎
-三种情况，`text`、`array`、`no children`。
+回归到 `ELEMENT` 类型的 `vnode` 处理逻辑。可以看出需要根据 `children`
+的类型进行不同处理。那都有哪些类型需要处理？
 <br />
-增加 `ShapeFlags` 两种类型。
+`text`、`array`、`no children`。
+<br />
+针对前两种，我们定义到至 `ShapeFlags` 里面。
 
 <CH.Code>
 ```jsx demo.jsx focus=4,5
@@ -326,7 +324,8 @@ const mountElement = (vnode, container, anchor) => {
 
 ---
 
-不要忘记修改 `shapeFlag` 赋值的地方。
+新增了 `ShapeFlags` 的内容，要时刻记得使用的位置。
+在 `vnode` 创建时进行赋值。
 
 <CH.Code>
 ```jsx demo.jsx focus=19:30
@@ -368,8 +367,8 @@ const normalizeChildren = (vnode, children) => {
 
 ---
 
-处理完 `processElement` ，  
-接下来处理 `processComponent`。
+处理完 `processElement` ，  `ELEMENT` 类型的 `vnode` 告一段落。
+接下来处理 `STATEFUL_COMPONENT` 类型的 `vnode`。
 
 <CH.Code>
 ```jsx demo.jsx
@@ -384,7 +383,7 @@ const processComponent = (n1, n2, container, anchor) => {
 ---
 
 `挂载组件` 需要处理哪些事情？回顾下本文目标，
-`组件` 需要在初始化调用 `setup` 函数,
+`组件` 需要在初始化调用 `setup` 函数，
 需要 `render` 函数来渲染实际的节点，若 `setup` 返回值是 `函数`，
 则把返回值作为 `render` 函数。
 <br />
