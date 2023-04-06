@@ -1,7 +1,7 @@
 import { reactive } from "../reactive"
 import { pauseTracking, resetTracking } from "../reactive/effect"
 import { camelize, hasOwn, isFunction, ShapeFlags } from "../share"
-import { emit, normalizeEmitsOptions } from "./componentEmits"
+import { emit, isEmitListener, normalizeEmitsOptions } from "./componentEmits"
 import { normalizePropsOptions } from "./componentProps"
 import { PublicInstanceProxyHandler } from "./componentPublicInstance"
 
@@ -77,7 +77,7 @@ export const setFullProps = (instance, rawProps, props, attrs) => {
 			let camelKey
 			if (options && hasOwn(options, (camelKey = camelize(key)))) {
 				props[camelKey] = value
-			} else {
+			} else if (!isEmitListener(instance.emitsOptions, key)){
 				if (!(key in attrs) || value !== attrs[key]) {
           attrs[key] = value
           hasAttrsChanged = true
