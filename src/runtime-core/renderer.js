@@ -160,7 +160,7 @@ export function createRenderer (nodeOps) {
 		const componentUpdateFn = () => {
 			if (!instance.isMounted) {
 				const subTree = instance.subTree = renderComponentRoot(instance)
-				patch(null, subTree, container, anchor)
+				patch(null, subTree, container, anchor, instance)
 				vnode.el = subTree.el
 				instance.isMounted = true
 			} else {
