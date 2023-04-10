@@ -1,0 +1,902 @@
+<CH.Scrollycoding showCopyButton={true} showExpandButton={false}>
+<br />
+<br />
+<br />
+<br />
+按照惯例，先用 `h` 函数重写目标代码。
+<br />
+<br />
+<br />
+<br />
+
+<CH.Code>
+```jsx demo.jsx focus=5:13,25:31
+	const Comp = {
+		props: ['fontColor'],
+		emits: ['changeColor'],
+		setup(props, { emit }) {
+			return () => (
+				h('div',
+					{
+						onClick: () => emit('changeColor'),
+						style: {
+							color: props.fontColor.value
+						}
+					},
+					'hello world'
+				)
+			)
+		}
+	}
+	createApp({
+		setup() {
+			const fontColor = reactive({ value: '#5dbe8a' })
+			const handleChangeColor = () => {
+				fontColor.value = '#baccd9'
+			}
+
+			return () => (
+				h(Comp,
+					{
+						fontColor: fontColor,
+						class: 'text-white',
+						onChangeColor: handleChangeColor
+					}
+				)
+			)
+		}
+	}).mount('#root')
+```
+</CH.Code>
+
+---
+
+整理一下设计思路。原先定义 `patch` 函数，来分发处理不同类型 `vnode`，
+针对 `ELEMENT`，`STATEFUL_COMPONENT` 分别执行对应的 `processElement`
+和 `processComponent`。
+
+<CH.Code>
+```jsx demo.jsx
+	const patch = (n1, n2, container, anchor) => {
+		const { shapeFlag } = n2
+	
+		if (shapeFlag & ShapeFlags.ELEMENT) {
+			processElement(n1, n2, container, anchor)
+		} else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
+			processComponent(n1, n2, container, anchor)
+		}
+	}
+```
+</CH.Code>
+
+---
+
+先开始处理 `ELEMENT` 类型的 `vnode` 的基本属性 `mount`。
+<br />
+之前我们是怎么处理的？看下 `mountElement` 函数。
+
+<CH.Code>
+```jsx demo.jsx focus=1:3,7,23:25
+	const patchProp = (el, key, prevVal, nextVal) => {
+		el.setAttribute(key, nextVal)
+	}
+
+	const processElement = (n1, n2, container, anchor) => {
+		if (!n1) {
+			mountElement(n2, container, anchor)
+		} else {
+			// TODO update
+		}
+	}
+
+	const mountElement = (vnode, container, anchor) => {
+		const { type, shapeFlag, children, props } = vnode
+		const el = vnode.el = createElement(type)
+	
+		if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+			setElementText(el, children)
+		} else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+			mountChildren(children, el, null)
+		}
+	
+		for(const key in props) {
+			patchProp(el, key, '', props[key])
+		}
+		insert(container, el, anchor)
+	}
+```
+</CH.Code>
+
+---
+
+这里的 `patchProp` 是由 `render` 创建时直接注入的节点操作方法。
+<br /> 
+只是做了简单处理。无法满足现阶段的需求。
+
+---
+
+改造下 `patchProp` 函数，针对不同属性进行处理。
+
+<CH.Code>
+```jsx demo.jsx
+	const isOn = key => /^on[^a-z]/.test(key)
+
+	const patchProp = (
+		el,
+		key,
+		prevVal,
+		nextVal
+	) => {
+		if (key === 'class') {
+			patchClass(el, nextVal)
+		} else if (key === 'style') {
+			patchStyle(el, prevVal, nextVal)
+		} else if (isOn(key)) {
+			patchEvent(el, key, prevVal, nextVal)
+		} else {
+			patchAttr(el, key, nextVal)
+		}
+	}
+```
+</CH.Code>
+
+---
+
+先实现下 `patchClass` 和 `patchAttr`。
+
+<CH.Code>
+```jsx demo.jsx
+  const patchClass = (el, val) => {
+		if (val === null) {
+			el.removeAttribute('class')
+		} else {
+			el.className = val
+		}
+	}
+
+	const patchAttr = (el, key, value) => {
+		if (value == null) {
+			el.removeAttribute(key)
+		} else {
+			el.setAttribute(key, value)
+		}
+	}
+```
+</CH.Code>
+
+---
+
+再处理下 `patchStyle` 的相关逻辑。
+
+<CH.Code>
+```jsx demo.jsx
+	const patchStyle = (el, prev, next) => {
+		const style = el.style
+		const isCssString = isString(style)
+
+		if (next && !isCssString) {
+			if(prev && !isString(prev)) {
+				for (const key in prev) {
+					next[key] === null && setStyle(style, key, '')
+				}
+			}
+			for (const key in next) {
+				setStyle(style, key, next[key])
+			}
+		} else {
+			if (isCssString) {
+				style.cssText = next
+			} else if (prev) {
+				el.removeAttribute('style')
+			}
+		}
+	}
+
+	const setStyle = (style, key, val) => {
+		// 简单处理
+		style[key] = val
+	}
+```
+</CH.Code>
+
+---
+
+还剩下 `patchEvent` 的逻辑。
+
+<CH.Code>
+```jsx demo.jsx
+	const patchEvent = (el, rawName, prev, next) => {
+		const invokers = el._invokers || (el._invokers = {})
+		
+		if (next && invokers[rawName]) {
+			invokers[rawName].value = next
+		} else {
+			const name = parseName(rawName)
+			if (next) {
+				const fn = () => fn.value()
+				fn.value = next
+				invokers[rawName] = fn
+				el.addEventListener(name, invokers[rawName])
+			} else {
+				el.removeEventListener(name, invokers[rawName])
+				invokers[rawName] = undefined
+			}
+		}
+	}
+
+	const parseName = (name) => {
+		return name.slice(2).toLowerCase()
+	}
+```
+</CH.Code>
+
+---
+
+节点的 `props` 虽然种类不少，处理起来也有些功夫。
+但功能相较简单。
+<br />
+视角回归到 `mountElement` 函数，我们把操作节点的函数统一增加
+`host` 前缀，原因自是为了 `见名知意`，区分后续的 `update` 逻辑。
+
+<CH.Code>
+```jsx demo.jsx focus=3:6
+const ensureRenderer = (renderOptions) => {
+	const {
+		createElement: hostCreateElement,
+		setElementText: hostSetElementText,
+		insert: hostInsert,
+		patchProp: hostPatchProp
+	} = renderOptions
+
+	// ...
+
+	const mountElement = (vnode, container, anchor) => {
+		const { type, shapeFlag, children, props } = vnode
+		// focus
+		const el = vnode.el = hostCreateElement(type)
+	
+		if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+			// focus
+			hostSetElementText(el, children)
+		} else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+			mountChildren(children, el, null)
+		}
+	
+		for(const key in props) {
+			// focus
+			hostPatchProp(el, key, '', props[key])
+		}
+		// focus
+		hostInsert(container, el, anchor)
+	}
+}
+```
+</CH.Code>
+
+---
+
+实现完 `mountElement`，进入 `patchElement` 逻辑。
+<CH.Code>
+```jsx demo.jsx
+	const processElement = (n1, n2, container, anchor) => {
+		if (!n1) {
+			mountElement(n2, container, anchor)
+		} else {
+			// focus
+			patchElement(n1, n2)
+		}
+	}
+```
+</CH.Code>
+
+---
+
+实现下 `patchElement`。
+
+<CH.Code>
+```jsx demo.jsx
+	const patchElement = (n1, n2) => {
+		const el = n2.el = n1.el
+		const oldProps = n1.props
+		const newProps = n2.props
+
+		// TODO 
+		// patchChildren(n1, n2, el, null)
+		patchProps(el, n2, oldProps, newProps)
+	}
+
+	const patchProps = (el, n2, oldProps, newProps) => {
+		for(const key in (oldProps || {})) {
+			!newProps[key] && hostPatchProp(
+				el,
+				key,
+				oldProps[key],
+				null
+			)
+		}
+
+		for(const key in newProps) {
+			hostPatchProp(
+				el,
+				key,
+				oldProps[key],
+				newProps[key]
+			)
+		}
+	}
+```
+</CH.Code>
+
+---
+
+`ELEMENT` 类型 `vnode` 告一段落，接下来就是 `组件` 的处理了。
+<br />
+组件需要处理哪些东西？回顾下目标代码。
+<br />
+`id`，`class` 继承至 `Comp` 根节点属性。`fontColor` 放置至 `Comp` 的
+`props` 里，`changeColor` 注册至 `Comp` 可被 `emit` 调用。
+
+<CH.Code>
+```jsx demo.jsx
+	const Comp = {
+		props: ['fontColor'],
+		emits: ['changeColor']
+		setup(props, { emit }) {
+			return () => (
+				<div
+					onClick={() => emit('changeColor')}
+					style={{ color: props.fontColor.value }}
+				>
+					hello world
+				</div>
+			)
+		}
+	}
+	createApp({
+		setup() {
+			const fontColor = reactive({ value: '#5dbe8a' })
+			const handleChangeColor = () => {
+				fontColor.value = '#baccd9'
+			}
+
+			return () => (
+				<Comp
+					id="comp"
+					fontColor={fontColor}
+					class="text-white"
+					onChangeColor={handleChangeColor}
+				/>
+			)
+		}
+	}).mount('#root')
+
+```
+</CH.Code>
+
+---
+
+同样，也先由 `mountComponent` 开始处理。
+
+<CH.Code>
+```jsx demo.jsx
+	const processComponent = (n1, n2, container, anchor) => {
+		if (!n1) {
+			// focus
+			mountComponent(n2, container, anchor)
+		} else {
+			// update
+		}
+	}
+```
+</CH.Code>
+---
+
+为了方便 `组件` 可以在特殊的场景下获取 `父组件`，
+在 `patch` 函数中新增一个参数 `parentComponent`，用以在
+`mountComponent` 时注册至组件实例上。
+
+<CH.Code>
+```jsx demo.jsx focus=11[46:60],13[46:62]
+	const patch = (
+		n1,
+		n2,
+		container,
+		anchor,
+		// focus
+		parentComponent
+	) => {
+		const { shapeFlag } = n2
+	
+		if (shapeFlag & ShapeFlags.ELEMENT) {
+			processElement(n1, n2, container, anchor, parentComponent)
+		} else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
+			processComponent(n1, n2, container, anchor, parentComponent)
+		}
+	}
+```
+</CH.Code>
+
+---
+
+`mountElement` 和 `patchElement` 也需要新增该参数。
+
+<CH.Code>
+```jsx demo.jsx
+	const processElement = (
+		n1,
+		n2,
+		container,
+		anchor,
+		// focus
+		parentComponent
+	) => {
+		if (!n1) {
+			// focus[40:54]
+			mountElement(n2, container, anchor, parentComponent)
+		} else {
+			// focus[25:39]
+			patchElement(n1, n2, parentComponent)
+		}
+	}
+
+	const mountElement = (
+		vnode,
+		container,
+		anchor,
+		// focus
+		parentComponent
+	) => {
+		...
+		} else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+			// focus[38:52]
+			mountChildren(children, el, null, parentComponent)
+		}
+		...
+	}
+
+	const patchElement = (n1, n2, parentComponent) => {
+		...
+	}
+
+
+```
+</CH.Code>
+
+---
+
+回到 `processComponent` 初始化 `组件` 的实例。
+新增一些属性，这里的 `props`，`propsOptions`，`attrs`，`emitsOptions`
+之间的区别是什么呢？
+<br />
+`propsOptions` 是 `Comp` 组件定义时的 `props` 选项。  
+`emitsOptions` 是 `Comp` 组件定义时的 `emits` 选项。  
+`props` 是基于 `propsOptions` 获取使用 `Comp` 时传入的属性集合。  
+`attrs` 是传入 `Comp` 属性中非 `propsOptions` 且非 `emitsOptions` 的属性集合。
+
+<CH.Code>
+```jsx demo.jsx focus=6:14,18
+	// focus[42:47]
+	const createComponentInstance = (vnode, parent) => {
+		const type = vnode.type
+		const instance = {
+			vnode,
+			type,
+			parent,
+
+			// TODO
+			propsOptions: normalizePropsOptions(type),
+			emitsOptions: normalizeEmitsOptions(type),
+
+			props: {},
+			attrs: {},
+
+			emit: null
+		}
+
+		// TODO
+		instance.emit = emit.bind(null, instance)
+
+		return instance
+	}
+	
+	const mountComponent = (
+		vnode,
+		container,
+		anchor,
+		parentComponent
+	) => {
+		const instance = vnode.component =
+		// focus[35:49]
+			createComponentInstance(vnode, parentComponent)
+		...
+	}
+```
+</CH.Code>
+
+--- 
+
+先简单实现下 `normalizePropsOptions` 来获取 `Comp` 中的 `props` 选项。
+
+<CH.Code>
+```jsx demo.jsx
+	// a-b -> aB
+	const camelize = (str) => {
+		return str.replace(/-(\w)/g, (_, c) => (c ? c.toUpperCase() : ''))
+	}
+
+	const normalizePropsOptions = (comp) => {
+		const raw = comp.props
+		const normalized = {}
+
+		if (isArray(raw)) {
+			for (let i = 0; i < raw.length; i++) {
+				const normalizedKey = camelize(raw[i])
+				normalized[normalizedKey] = {}
+			}
+		} else {
+			for (const key in raw) {
+				const normalizeKey = camelize(key)
+				normalized[normalizeKey] = raw[key]
+			}
+		}
+
+		return [normalized]
+	}
+```
+</CH.Code>
+
+--- 
+
+再简单实现下 `normalizeEmitsOptions` 来获取 `Comp` 中的 `emits` 选项。
+
+<CH.Code>
+```jsx demo.jsx
+	const extend = Object.assign
+
+	const normalizeEmitsOptions = (comp) => {
+
+		const raw = comp.emits
+		let normalized = {}
+
+		if (isArray(raw)) {
+			raw.forEach(key => normalized[key] = null)
+		} else {
+			extend(normalized, raw)
+		}
+
+		return normalized
+	}
+```
+</CH.Code>
+
+
+---
+
+然后，我们在 `mountComponent` 中的 `setupComponent` 里实现 `props` 和 `attrs` 的赋值。
+
+<CH.Code>
+```jsx demo.jsx
+	const hasOwn = (val, key) => hasOwnProperty.call(val, key)
+
+	function isEmitListener(
+		options,
+		key
+	) {
+		if (!options || !isOn(key)) return false
+
+		key = key.slice(2)
+		return (
+			hasOwn(options, key[0].toLowerCase() + key.slice(1)) ||
+			hasOwn(options, key)
+		)
+	}
+
+	const setupComponent = instance => {
+
+		const { props } = instance.vnode
+		initProps(instance, props)
+
+		return setupStatefulComponent(instance)
+	}
+
+	function initProps(instance, rawProps = {}) {
+		const props = {}
+		const attrs = {}
+		setFullProps(instance, rawProps, props, attrs)
+
+		instance.attrs = attrs
+		instance.props = props
+	}
+
+	const setFullProps = (instance, rawProps, props, attrs) => {
+		const [options] = instance.propsOptions
+
+		if (rawProps) {
+			for(const key in rawProps) {
+				const value = rawProps[key]
+				let camelKey
+				if (options && hasOwn(options, (camelKey = camelize(key)))) {
+					props[camelKey] = value
+				} else if (!isEmitListener(instance.emitsOptions, key)){
+					if (!(key in attrs) || value !== attrs[key]) {
+						attrs[key] = value
+					}
+				}
+			}
+		}
+	}
+```
+</CH.Code>
+
+---
+
+经过 `initProps` 之后，组件 `instance` 变成这样。
+
+<CH.Code>
+```js demo.js
+const compInstance = {
+	vnode: {
+		type: Comp, // 定义的Comp对象
+		props: {
+			id: 'comp',
+			fontColor: fontColor,
+			class: 'text-white',
+			onChangeColor: handleChangeColor
+		},
+		children: null
+	},
+	type: Comp, // 定义的Comp对象
+	parent: appInstance, // App实例
+
+	propsOptions: {
+		fontColor: {}
+	},
+
+	emitsOptions: {
+		changeColor: null
+	},
+
+	props: {
+		fontColor: fontColor
+	},
+	attrs: {
+		id: 'comp',
+		class: 'text-white'
+	},
+
+	// TODO
+	emit: fn
+}
+```
+</CH.Code>
+
+---
+
+再实现下 `emit` 函数。
+
+<CH.Code>
+```jsx demo.jsx
+	const toHandlerKey = str => str ? `on${capitalize(str)}` : ``
+	const capitalize = str => str.charAt(0).toUpperCase() + str.slice(1)
+
+	function emit (instance, event, ...rawArgs) {
+
+		if (instance.isUnmounted) return
+		const props = instance.vnode.props || {}
+
+		let handler = props[toHandlerKey(event)]
+		rawArgs ? handler(rawArgs) : handler()
+
+	}
+```
+</CH.Code>
+
+---
+
+初始化组件实例后，为 `setup` 函数增加 `props` 和 `emit` 的参数。
+<br />
+修改 `setupComponent` 函数中 `setupStatefulComponent` 的逻辑。
+
+<CH.Code>
+```jsx demo.jsx focus=6:10
+	const setupStatefulComponent = instance => {
+		const component = instance.type
+		const { setup } = component
+	
+		if (setup) {
+			const setupContext = {
+				emit: instance.emit
+			}
+
+			const setupResult = setup(instance.props, setupContext)
+			handleSetupResult(instance, setupResult)
+		} else {
+			finishSetupComponent(instance)
+		}
+	}
+
+```
+</CH.Code>
+
+---
+
+`setup` 函数执行获得了对应的参数，接下来就是在渲染 `Comp` 时，将对应的属性挂到组件根节点。
+<br />
+也就是在 `setupRenderEffect` 中的逻辑。
+<CH.Code>
+```jsx demo.jsx
+	const setupRenderEffect = (instance, vnode, container, anchor) => {
+		const componentUpdateFn = () => {
+			if (!instance.isMounted) {
+				// focus
+				const subTree = instance.subTree = instance.render()
+				patch(null, subTree, container, anchor)
+				vnode.el = subTree.el
+				instance.isMounted = true
+			} else {
+				const nextTree = instance.render()
+				const prevTree = instance.subTree
+				instance.subTree = nextTree
+
+				// TODO patch
+				patch(
+					prevTree,
+					nextTree,
+					hostParentNode(prevTree.el),
+					hostNextSibling(prevTree.anchor || prevTree.el)
+				)
+				next.el = nextTree.el
+			}
+		}
+
+		const update = instance.update = () => effect.run()
+		const effect = new ReactiveEffect(componentUpdateFn)
+
+		update()
+	}
+```
+</CH.Code>
+
+---
+
+直接执行显然是无法正常将属性继承到组件根节点上，需要做一定的处理。
+
+<CH.Code>
+```jsx demo.jsx focus=1:15
+	const renderComponentRoot = (instance) => {
+		const { render, attrs } = instance
+		let result = render()
+
+		if (attrs) {
+			const keys = Object.keys(attrs)
+			const { shapeFlag } = result
+			if (keys.length) {
+				if (shapeFlag & (ShapeFlags.ELEMENT | ShapeFlags.COMPONENT)) {
+					// TODO
+					result = cloneVNode(result, attrs)
+				}
+			}
+		}
+		return result
+	}
+
+	const setupRenderEffect = (instance, vnode, container, anchor) => {
+		const componentUpdateFn = () => {
+			if (!instance.isMounted) {
+				// focus
+				const subTree = instance.subTree = renderComponentRoot(instance)
+				patch(null, subTree, container, anchor)
+				vnode.el = subTree.el
+				instance.isMounted = true
+			} else {
+				const nextTree = instance.render()
+				const prevTree = instance.subTree
+				instance.subTree = nextTree
+
+				// TODO patch
+				patch(
+					prevTree,
+					nextTree,
+					hostParentNode(prevTree.el),
+					hostNextSibling(prevTree.anchor || prevTree.el)
+				)
+				next.el = nextTree.el
+			}
+		}
+
+		const update = instance.update = () => effect.run()
+		const effect = new ReactiveEffect(componentUpdateFn)
+
+		update()
+	}
+```
+</CH.Code>
+
+---
+
+简单实现下 `cloneVNode`
+
+<CH.Code>
+```jsx demo.jsx
+	const cloneVNode = (vnode, extraProps) => {
+		const { props } = vnode
+
+		const mergedProps = extraProps ? mergeProps(props || {}, extraProps) : props
+
+		return {
+			...vnode,
+			props: mergedProps
+		}
+	}
+
+	const mergeProps = (...args) => {
+		let ret = {}
+		for (let i = 0; i < args.length; i++) {
+			const toMerge = args[i]
+			for (const key in toMerge) {
+				if (key === 'class' && toMerge[key] !== ret[key]) {
+					// TODO class merge
+					// normalizeClass([ret.class, toMerge.class])
+					// 简单处理
+					ret.class = (ret.class || '') + (toMerge.class || '')
+				} else if (key === 'style') {
+					// TODO style merge
+					// normalizeStyle([ret[key], toMerge[key]])
+					// 简单处理
+					ret.style = { ...ret[key], ...toMerge[key] }
+				} else if (isOn(key)) {
+					// 简单处理
+					ret[key] = toMerge[key]
+				} else if (key !== ''){
+					ret[key] = toMerge[key]
+				}
+			}
+		}
+		return ret
+	}
+```
+</CH.Code>
+
+---
+
+如此，便实现了 `component` 的 `props` 挂载。
+<br />
+串联下完整的 `props` 的 `mount` 逻辑。
+
+<CH.Code>
+```bash demo.bash
+	# start deal App
+	> patch
+		> processComponent
+			> mountComponent
+				> setupComponent
+					> setup
+				> setupEffectComponent
+					> renderComponentRoot
+					# start deal Comp
+					> patch
+						> processComponent
+							> mountComponent
+								> setupComponent
+									> initProps
+									> setup
+								> setupEffectComponent
+									> renderComponentRoot
+										> inheritAttrs
+									# start deal div(hello world)
+									> patch
+										> processElement
+											> mountElement
+												> hostInsetBefore
+												> hostPatchProp
+									# end div(hello world)
+					# end Comp
+	# end App 
+```
+</CH.Code>
+
+
+</CH.Scrollycoding>
+
+<div className="mt-20 text-lg text-white">
+</div>
