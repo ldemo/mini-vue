@@ -1,4 +1,4 @@
-export const advancePostionWithMutation = (
+export const advancePositionWithMutation = (
 	pos,
 	source,
 	numberOfCharacters = source.length
