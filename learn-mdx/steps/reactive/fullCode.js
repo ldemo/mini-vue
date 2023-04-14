@@ -43,3 +43,27 @@ class ReactiveEffect {
 		activeEffect = null
 	}
 }
+
+const proxyMap = new WeakMap()
+const reactive = (target) => {
+	if (proxyMap.get(target)) {
+		return proxyMap.get(target)
+	}
+
+	let proxy = new Proxy(target, {
+		get(target, key, receiver) {
+			const res = Reflect.get(target, key, receiver)
+			track(target, key)
+			return res
+		},
+
+		set(target, key, val, receiver) {
+			const res = Reflect.set(target, key, val, receiver)
+			trigger(target, key)
+			return res
+		}
+	})
+
+	proxyMap.set(target, proxy)
+	return proxy
+}
