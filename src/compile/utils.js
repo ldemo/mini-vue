@@ -1,3 +1,9 @@
+import { NodeTypes } from "./ast"
+
+export const isText = (node) => {
+	return node.type === NodeTypes.INTERPOLATION || node.type === NodeTypes.TEXT
+}
+
 export const advancePositionWithMutation = (
 	pos,
 	source,

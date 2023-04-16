@@ -2,7 +2,7 @@ import { reactive } from "../src/reactive"
 import { createBlock, createVNode, Fragment, h, openBlock } from "../src/runtime-core"
 import { renderList } from "../src/runtime-core/helpers/renderList"
 import { createApp } from '../src/runtime-dom'
-import { PatchFlag } from "../src/share/patchFlag"
+import { PatchFlags } from "../src/share/patchFlags"
 
 const Comp = {
 	props: ['msg', 'count'],
@@ -29,10 +29,10 @@ createApp({
 			createVNode('div', { id: 2, style: { color: msg.value }}, [
 				createVNode('div', { id: 3 }, [
 					(openBlock(true), createBlock(Fragment, null, renderList(list, (i, index) => {
-						return createVNode('span', { key: i, c: index }, i, PatchFlag.TEXT | PatchFlag.PROPS, ['c'])
-					}), PatchFlag.KEYED_FRAGMENT))
+						return createVNode('span', { key: i, c: index }, i, PatchFlags.TEXT | PatchFlags.PROPS, ['c'])
+					}), PatchFlags.KEYED_FRAGMENT))
 				])
-			], PatchFlag.STYLE)
+			], PatchFlags.STYLE)
 		]))
 	},
 }).mount('#root')

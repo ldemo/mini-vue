@@ -1,3 +1,4 @@
+import { isString } from "../share"
 import { NodeTypes } from "./ast"
 import { TO_DISPLAY_STRING } from "./runtimeHelpers"
 
@@ -35,8 +36,18 @@ export const traverseNode = (node, context) => {
 	}
 }
 
-export const traverseChildren = (node, context) => {
+export const traverseChildren = (parent, context) => {
+	let i = 0
+	const nodeRemove = () => i--
 
+	for(; i < parent.children.length; i++) {
+		const child = parent.children[i]
+		if (isString(child)) continue
+		context.parent = parent
+		context.childIndex = i
+		context.onNodeRemoved = nodeRemove
+		traverseNode(child, context)
+	}
 }
 
 export const createTransformContext = (

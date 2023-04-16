@@ -1,5 +1,5 @@
 import { extend } from "../share"
-import { createRoot, ElementTypes, NodeTypes } from "./ast"
+import { ConstantsType, createRoot, ElementTypes, NodeTypes } from "./ast"
 import { advancePositionWithMutation } from "./utils"
 
 export const defaultParserOptions = {
@@ -67,16 +67,36 @@ const parseChildren = (context, ancestors) => {
 		pushNode(nodes, node)
 	}
 
+	let removedWhiteSpace = false
 	for(let i = 0; i < nodes.length; i++) {
 		const node = nodes[i]
 		if (node.type === NodeTypes.TEXT) {
-			if (/^[\t\r\n\f ]/.test(node.content)) {
+
+			if (!/[^\t\r\n\f ]/.test(node.content)) {
+				const prev = nodes[i - 1]
+				const next = nodes[i + 1]
+
+				if (
+					!prev ||
+					!next ||
+					(
+						prev.type === NodeTypes.ELEMENT &&
+						next.type === NodeTypes.ELEMENT &&
+						/[\r\n]/.test(node.content)
+					)
+				) {
+					removedWhiteSpace = true
+					nodes[i] = null
+				} else {
+					node.content = ' '
+				}
+			} else {
 				node.content = node.content.replace(/[\t\r\n\f ]+/g, ' ')
 			}
 		}
 	}
 
-	return nodes
+	return removedWhiteSpace ? nodes.filter(Boolean) : nodes
 }
 
 const pushNode = (nodes, node) => {
@@ -189,6 +209,8 @@ const parseInterpolation = (context) => {
 		content: {
 			type: NodeTypes.SIMPLE_EXPRESSION,
 			content,
+			isStatic: false,
+			constType: ConstantsType.NOT_CONSTANT,
 			loc: getSelection(context, innerStart, innerEnd)
 		},
 		loc: getSelection(context, start)
@@ -271,6 +293,7 @@ const parseAttribute = (context, nameSet) => {
 			)
 
 			let content = match[2]
+			let isStatic = true
 			
 			if (isSlot) {
 				content += match[3] || ''
@@ -279,6 +302,10 @@ const parseAttribute = (context, nameSet) => {
 			arg = {
 				type: NodeTypes.SIMPLE_EXPRESSION,
 				content,
+				isStatic,
+				constType: isStatic
+					? ConstantsType.CAN_STRINGIFY
+					: ConstantsType.NOT_CONSTANT,
 				loc
 			}
 		}
@@ -293,6 +320,8 @@ const parseAttribute = (context, nameSet) => {
 			exp: value && {
 				type: NodeTypes.SIMPLE_EXPRESSION,
 				content: value.content,
+				isStatic: false,
+				constType: ConstantsType.NOT_CONSTANT,
 				loc: value.loc
 			},
 			modifiers,
