@@ -1,6 +1,6 @@
 import { ReactiveEffect } from "../reactive"
 import { ShapeFlags } from "../share"
-import { PatchFlag } from "../share/patchFlag"
+import { PatchFlags } from "../share/patchFlags"
 import { createAppAPI } from "./apiCreateApp"
 import { createComponentInstance, setupComponent } from "./component"
 import { updateProps } from "./componentProps"
@@ -98,7 +98,7 @@ export function createRenderer (nodeOps) {
 		} else {
 			if (
 				patchFlag > 0 &&
-				patchFlag & PatchFlag.STABLE_FRAGMENT &&
+				patchFlag & PatchFlags.STABLE_FRAGMENT &&
 				dynamicChildren
 			) {
 				patchBlockChildren(
@@ -246,20 +246,20 @@ export function createRenderer (nodeOps) {
 		}
 
 		if (patchFlag > 0) {
-			if (patchFlag & PatchFlag.FULL_PROPS) {
+			if (patchFlag & PatchFlags.FULL_PROPS) {
 				patchProps(el, n2, oldProps, newProps)
 			} else {
-				if (patchFlag & PatchFlag.CLASS) {
+				if (patchFlag & PatchFlags.CLASS) {
 					if (oldProps.class !== newProps.class) {
 						hostPatchProp(el, 'class', null, newProps.class)
 					}
 				}
 
-				if (patchFlag & PatchFlag.STYLE) {
+				if (patchFlag & PatchFlags.STYLE) {
 					hostPatchProp(el, 'style', oldProps.style, newProps.style)
 				}
 
-				if (patchFlag & PatchFlag.PROPS) {
+				if (patchFlag & PatchFlags.PROPS) {
 					const propsToUpdate = n2.dynamicProps
 					for (let i = 0; i < propsToUpdate.length; i++) {
 						const key = propsToUpdate[i]
@@ -277,7 +277,7 @@ export function createRenderer (nodeOps) {
 				}
 			}
 
-			if (patchFlag & PatchFlag.TEXT) {
+			if (patchFlag & PatchFlags.TEXT) {
 				if (n2.children !== n1.children)
 				hostSetElementText(el, n2.children)
 			}
@@ -315,7 +315,7 @@ export function createRenderer (nodeOps) {
 		const { shapeFlag: preShapeFlag = 0 } = n1
 
 		if (patchFlag > 0) {
-			if (patchFlag & PatchFlag.KEYED_FRAGMENT) {
+			if (patchFlag & PatchFlags.KEYED_FRAGMENT) {
 				patchKeyedChildren(
 					c1,
 					c2,
@@ -325,7 +325,7 @@ export function createRenderer (nodeOps) {
 					optimized
 				)
 				return
-			} else if (patchFlag & PatchFlag.UNKEYED_FRAGMENT) {
+			} else if (patchFlag & PatchFlags.UNKEYED_FRAGMENT) {
 				patchUnkeyedChildren(
 					c1,
 					c2,

@@ -1,6 +1,6 @@
 import { toRaw } from "../reactive/reactive"
 import { camelize, hasOwn, isArray } from "../share"
-import { PatchFlag } from "../share/patchFlag"
+import { PatchFlags } from "../share/patchFlags"
 import { setFullProps } from "./component"
 import { isEmitListener } from "./componentEmits"
 
@@ -31,8 +31,8 @@ export const updateProps = (instance, nextProps, prevProps, optimized) => {
 	const rawCurrentProps = toRaw(props)
 
 	if (
-		(optimized || patchFlag & PatchFlag.PROPS) &&
-		!(patchFlag & PatchFlag.FULL_PROPS)
+		(optimized || patchFlag & PatchFlags.PROPS) &&
+		!(patchFlag & PatchFlags.FULL_PROPS)
 	) {
 		const propsToUpdate = instance.vnode.dynamicProps
 		for (let i = 0; i < propsToUpdate.length; i++) {
