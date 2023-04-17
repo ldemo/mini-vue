@@ -1,4 +1,4 @@
-import { ConstantsType, createCallExpression, createCompoundExpression, NodeTypes } from "../ast"
+import { ConstantTypes, createCallExpression, createCompoundExpression, NodeTypes } from "../ast"
 import { isText } from "../utils"
 import { PatchFlags } from '../../share/patchFlags'
 import { CREATE_TEXT } from "../runtimeHelpers"
@@ -60,7 +60,7 @@ export const transformText = (node, context) => {
 						callArgs.push(child)
 					}
 
-					if (getConstantType(child, context) === ConstantsType.NOT_CONSTANT) {
+					if (getConstantType(child, context) === ConstantTypes.NOT_CONSTANT) {
 						callArgs.push(
 							PatchFlags.TEXT
 						)

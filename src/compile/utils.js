@@ -1,4 +1,5 @@
 import { NodeTypes } from "./ast"
+import { advancePositionWithClone } from "./parse"
 
 export const isText = (node) => {
 	return node.type === NodeTypes.INTERPOLATION || node.type === NodeTypes.TEXT
@@ -27,4 +28,22 @@ export const advancePositionWithMutation = (
 			: numberOfCharacters - lastNewLinePos
 
 	return pos
+}
+
+export const getInnerRange = (loc, offset, length) => {
+	const source = loc.source.slice(offset, offset + length)
+	const newLoc = {
+		source,
+		start: advancePositionWithClone(loc.start, loc.source, offset),
+		end: loc.end
+	}
+	if (length !== null) {
+		newLoc.end = advancePositionWithClone(
+			loc.start,
+			loc.source,
+			offset + length
+		)
+	}
+
+	return newLoc
 }

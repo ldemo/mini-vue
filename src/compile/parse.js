@@ -1,5 +1,5 @@
 import { extend } from "../share"
-import { ConstantsType, createRoot, ElementTypes, NodeTypes } from "./ast"
+import { ConstantTypes, createRoot, ElementTypes, NodeTypes } from "./ast"
 import { advancePositionWithMutation } from "./utils"
 
 export const defaultParserOptions = {
@@ -210,7 +210,7 @@ const parseInterpolation = (context) => {
 			type: NodeTypes.SIMPLE_EXPRESSION,
 			content,
 			isStatic: false,
-			constType: ConstantsType.NOT_CONSTANT,
+			constType: ConstantTypes.NOT_CONSTANT,
 			loc: getSelection(context, innerStart, innerEnd)
 		},
 		loc: getSelection(context, start)
@@ -304,8 +304,8 @@ const parseAttribute = (context, nameSet) => {
 				content,
 				isStatic,
 				constType: isStatic
-					? ConstantsType.CAN_STRINGIFY
-					: ConstantsType.NOT_CONSTANT,
+					? ConstantTypes.CAN_STRINGIFY
+					: ConstantTypes.NOT_CONSTANT,
 				loc
 			}
 		}
@@ -321,7 +321,7 @@ const parseAttribute = (context, nameSet) => {
 				type: NodeTypes.SIMPLE_EXPRESSION,
 				content: value.content,
 				isStatic: false,
-				constType: ConstantsType.NOT_CONSTANT,
+				constType: ConstantTypes.NOT_CONSTANT,
 				loc: value.loc
 			},
 			modifiers,
@@ -393,7 +393,7 @@ const getNewPosition = (context, start, numberOfCharacters) => {
 	)
 }
 
-const advancePositionWithClone = (pos, source, numberOfCharacters) => {
+export const advancePositionWithClone = (pos, source, numberOfCharacters) => {
 	return advancePositionWithMutation(
 		extend({}, pos),
 		source,

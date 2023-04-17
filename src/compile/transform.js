@@ -53,12 +53,14 @@ export const traverseChildren = (parent, context) => {
 export const createTransformContext = (
 	root,
 	{
-		nodeTransforms
+		nodeTransforms,
+		directiveTransforms
 	}
 ) => {
 	const context = {
 
 		nodeTransforms,
+		directiveTransforms,
 
 		root,
 		helpers: new Map(),
