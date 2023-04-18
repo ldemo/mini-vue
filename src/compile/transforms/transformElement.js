@@ -170,7 +170,7 @@ export const buildProps = (
 						getInnerRange(loc, 0, name.length)
 					),
 					createSimpleExpression(
-						value,
+						value.content,
 						true,
 						value.loc
 					)
