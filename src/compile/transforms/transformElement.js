@@ -55,7 +55,7 @@ export const transformElement = (node, context) => {
 			)
 			vnodeProps = propsBuildResult.props
 			patchFlag = propsBuildResult.patchFlag
-			vnodeDynamicProps = propsBuildResult.dynamicPropNames
+			dynamicPropNames = propsBuildResult.dynamicPropNames
 			if (propsBuildResult.shouldUseBlock) {
         shouldUseBlock = true
       }
