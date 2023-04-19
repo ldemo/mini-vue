@@ -5,6 +5,7 @@ import { transform } from "./transform"
 import { transformElement } from "./transforms/transformElement"
 import { transformText } from "./transforms/transfromText"
 import { transformBind } from "./transforms/vBind"
+import { transformOn } from "./transforms/vOn"
 
 export const compile = (template, options) => {
 	const ast = baseParse(template)
@@ -17,10 +18,10 @@ export const compile = (template, options) => {
 				transformText
 			],
 			directiveTransforms: {
-				bind: transformBind
+				bind: transformBind,
+				on: transformOn
 			}
 		})
 	)
-	console.log(ast)
 	return generate(ast)
 }

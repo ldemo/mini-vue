@@ -1,5 +1,6 @@
 import { NodeTypes } from "./ast"
 import { advancePositionWithClone } from "./parse"
+import { CREATE_BLOCK, CREATE_ELEMENT_BLOCK, CREATE_ELEMENT_VNODE, CREATE_VNODE, OPEN_BLOCK } from "./runtimeHelpers"
 
 export const isText = (node) => {
 	return node.type === NodeTypes.INTERPOLATION || node.type === NodeTypes.TEXT
@@ -46,4 +47,25 @@ export const getInnerRange = (loc, offset, length) => {
 	}
 
 	return newLoc
+}
+
+export const makeBlock = (
+  node,
+  { helper, removeHelper }
+) => {
+  if (!node.isBlock) {
+    node.isBlock = true
+    removeHelper(getVNodeHelper(node.isComponent))
+    helper(OPEN_BLOCK)
+    helper(getVNodeBlockHelper(node.isComponent))
+  }
+}
+
+
+export const getVNodeHelper = (isComponent) => {
+  return isComponent ? CREATE_VNODE : CREATE_ELEMENT_VNODE
+}
+
+export const getVNodeBlockHelper = (isComponent) => {
+  return isComponent ? CREATE_BLOCK : CREATE_ELEMENT_BLOCK
 }
