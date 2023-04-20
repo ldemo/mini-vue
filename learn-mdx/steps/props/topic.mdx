@@ -32,7 +32,7 @@ createApp({
 
 		return () => (
 			<Comp
-				id="comp"
+				inheritCustomAttr={fontColor.value}
 				fontColor={fontColor}
 				class="text-white"
 				onChangeColor={handleChangeColor}

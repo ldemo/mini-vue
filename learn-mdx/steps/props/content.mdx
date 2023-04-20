@@ -38,6 +38,7 @@
 			return () => (
 				h(Comp,
 					{
+						inheritCustomAttr: fontColor.value,
 						fontColor: fontColor,
 						class: 'text-white',
 						onChangeColor: handleChangeColor
@@ -333,7 +334,7 @@ const ensureRenderer = (renderOptions) => {
 <br />
 组件需要处理哪些东西？回顾下目标代码。
 <br />
-`id`，`class` 继承至 `Comp` 根节点属性。`fontColor` 放置至 `Comp` 的
+`inheritCustomAttr`，`class` 继承至 `Comp` 根节点属性。`fontColor` 放置至 `Comp` 的
 `props` 里，`changeColor` 注册至 `Comp` 可被 `emit` 调用。
 
 <CH.Code>
@@ -361,7 +362,7 @@ const ensureRenderer = (renderOptions) => {
 
 			return () => (
 				<Comp
-					id="comp"
+					inheritCustomAttr={fontColor.value}
 					fontColor={fontColor}
 					class="text-white"
 					onChangeColor={handleChangeColor}
@@ -638,7 +639,7 @@ const compInstance = {
 	vnode: {
 		type: Comp, // 定义的Comp对象
 		props: {
-			id: 'comp',
+			inheritCustomAttr: fontColor.value,
 			fontColor: fontColor,
 			class: 'text-white',
 			onChangeColor: handleChangeColor
@@ -660,7 +661,7 @@ const compInstance = {
 		fontColor: fontColor
 	},
 	attrs: {
-		id: 'comp',
+		inheritCustomAttr: fontColor.value,
 		class: 'text-white'
 	},
 
@@ -865,38 +866,360 @@ const compInstance = {
 
 <CH.Code>
 ```bash demo.bash
-	# start deal App
+	# start mount App
 	> patch
 		> processComponent
 			> mountComponent
 				> setupComponent
 					> setup
 				> setupEffectComponent
-					> renderComponentRoot
-					# start deal Comp
-					> patch
-						> processComponent
-							> mountComponent
-								> setupComponent
-									> initProps
-									> setup
-								> setupEffectComponent
-									> renderComponentRoot
-										> inheritAttrs
-									# start deal div(hello world)
-									> patch
-										> processElement
-											> mountElement
-												> hostInsetBefore
-												> hostPatchProp
-									# end div(hello world)
-					# end Comp
-	# end App 
+					> componentUpdateFn / mount
+						> renderComponentRoot
+						# start mount Comp
+						> patch
+							> processComponent
+								> mountComponent
+									> setupComponent
+										> initProps
+										> setup
+									> setupEffectComponent
+										> componentUpdateFn / mount
+											> renderComponentRoot
+												> inheritAttrs
+											# start mount div(hello world)
+											> patch
+												> processElement
+													> mountElement
+														> hostInsetBefore
+														> hostPatchProp
+											# end mount div(hello world)
+						# end mount Comp
+	# end mount App 
 ```
 </CH.Code>
 
+---
+
+接下来处理下 `updateComponent` 逻辑。
+
+<CH.Code>
+```jsx demo.jsx
+	const processComponent = (n1, n2, container, anchor, parentComponent) => {
+		if (!n1) {
+			mountComponent(n2, container, anchor, parentComponent)
+		} else {
+			// focus
+			updateComponent(n1, n2)
+		}
+	}
+```
+</CH.Code>
+
+---
+
+这里需要关注两个地方，`shouldUpdateComponent` 以及 `instance.update`。
+`shouldUpdateComponent` 就是比较 `props` 是否存在变更，这个目的明确。
+`instance.update` 呢。
+
+<CH.Code>
+```jsx demo.jsx
+	const updateComponent = (n1, n2) => {
+		const instance = n2.component = n1.component
+
+		if (shouldUpdateComponent(n1, n2)) {
+			instance.update()
+		} else {
+			n2.el = n1.el
+			instance.vnode = n2
+		}
+	}
+```
+</CH.Code>
+
+--- 
+
+先看看 `instance.update` 是怎么实现？
+
+
+<CH.Code>
+```jsx demo.jsx focus=8:23
+	const componentUpdateFn = () => {
+		if (!instance.isMounted) {
+			const subTree = instance.subTree = instance.render()
+			patch(null, subTree, container, anchor)
+			vnode.el = subTree.el
+			instance.isMounted = true
+		} else {
+
+			let { vnode } = instance
+
+			const nextTree = instance.render()
+			const prevTree = instance.subTree
+			instance.subTree = nextTree
+
+			patch(
+				prevTree,
+				nextTree,
+				hostParentNode(prevTree.el),
+				hostNextSibling(prevTree.anchor || prevTree.el),
+				instance
+			)
+
+			vnode.el = nextTree.el
+		}
+	}
+
+	// focus
+	const update = instance.update = () => effect.run()
+	const effect = new ReactiveEffect(componentUpdateFn)
+
+	update()
+```
+</CH.Code>
+
+---
+
+新增注入 `hostParentNode`，`hostNextSibling` 。
+
+<CH.Code>
+```jsx demo.jsx
+const nodeOpts = {
+	createElement: tag => document.createElement(tag),
+	setElementText: (el, text) => el.textContent = text,
+	insert: (parent, child, anchor) => {
+		return parent.insertBefore(child, anchor)
+	},
+	// focus
+	parentNode: node => node.parentNode,
+	// focus
+	nextSibling: node => node.nextSibling,
+}
+
+const ensureRenderer = (renderOptions) => {
+	const {
+		createElement: hostCreateElement,
+		setElementText: hostSetElementText,
+		insert: hostInsert,
+		patchProp: hostPatchProp,
+		// focus
+		parentNode: hostParentNode,
+		// focus
+		nextSibling: hostNextSibling
+	} = renderOptions
+
+	...
+}
+
+```
+</CH.Code>
+
+--- 
+
+思考一下，组件触发更新的时机。
+`fontColor` 收集了两个 `Comp` 和 `App` 两个组件的 `update`。
+
+<CH.Code>
+```jsx demo.jsx
+	const Comp = {
+		props: ['fontColor'],
+		emits: ['changeColor'],
+		setup(props, { emits }) {
+			return () => (
+				<div
+					onClick={() => emits('changeColor')}
+					style={{ color: props.fontColor.value }}
+				>
+					hello world
+				</div>
+			)
+		}
+	}
+	createApp({
+		setup() {
+			const fontColor = reactive({ value: '#5dbe8a' })
+			const handleChangeColor = () => {
+				fontColor.value = '#baccd9'
+			}
+
+			return () => (
+				<Comp
+					inheritCustomAttr={fontColor.value}
+					fontColor={fontColor}
+					class="text-white"
+					onChangeColor={handleChangeColor}
+				/>
+			)
+		}
+	}).mount('#root')
+```
+</CH.Code>
+
+---
+
+所以当 `fontColor` 变更时，`Comp` 触发 `update` 直接进行 `patch` 的逻辑这个没问题。
+但是触发 `App` 的 `update`，继而导致触发 `updateComponent` 方法，这里就需要思考 `props` 的更新了。
+<br />
+新增 `next`，如果存在 `next`，则代表需要更新 `props`，用 `updateComponentPreRender` 来执行更新逻辑。
+
+<CH.Code>
+```jsx demo.jsx focus=17:24,29
+	const updateComponent = (n1, n2) => {
+		const instance = n2.component = n1.component
+
+		if (shouldUpdateComponent(n1, n2)) {
+			// focus
+			instance.next = n2
+			instance.update()
+		} else {
+			n2.el = n1.el
+			instance.vnode = n2
+		}
+	}
+
+	const componentUpdateFn = () => {
+			if (!instance.isMounted) {
+				...
+			} else {
+				let { next, vnode } = instance
+
+				if (next) {
+					next.el = vnode.el
+					updateComponentPreRender(instance, next, optimized)
+				} else {
+					next = vnode
+				}
+				const nextTree = renderComponentRoot(instance)
+				const prevTree = instance.subTree
+        instance.subTree = nextTree
+				patch(...)
+				next.el = nextTree.el
+			}
+		}
+
+
+```
+</CH.Code>
+
+---
+
+那问题就剩下两个了，`shouldUpdateProps` 和 `updateComponentPreRender`。
+<br />
+实现下 `shouldUpdateProps`
+
+<CH.Code>
+```jsx demo.jsx
+	const shouldUpdateComponent = (n1, n2) => {
+		const { props: p1 } = n1
+		const { props: p2 } = n2
+
+		if (p1 === p2) return false
+		if (!p1) return !!p2
+		if (!p2) return true
+
+		return hasPropsChanged(p1, p2)
+	}
+
+	const hasPropsChanged = (prevProps, nextProps) => {
+		const nextKeys = Object.keys(nextProps)
+
+		if (Object.keys(prevProps).length !== nextKeys.length) return true
+
+		for (let i = 0; i < nextKeys.length; i++) {
+			const key = nextKeys[i]
+			if (prevProps[key] !== nextProps[key]) {
+				return true
+			}
+		}
+		return false
+	}
+```
+</CH.Code>
+
+---
+
+然后就是 `updateComponentPreRender`
+
+<CH.Code>
+```jsx demo.jsx
+	const updateComponentPreRender = (instance, nextVNode) => {
+		nextVNode.component = instance
+		const prevProps = instance.vnode.props
+		instance.vnode = nextVNode
+		instance.next = null
+
+		updateProps(instance, nextVNode.props, prevProps)
+	}
+
+	const updateProps = (instance, nextProps, prevProps) => {
+		const { props, attrs } = instance
+		const rawCurrentProps = props
+
+		setFullProps(instance, nextProps, props, attrs)
+	
+		for (const key in rawCurrentProps) {
+			if (!nextProps || !hasOwn(nextProps, key)) {
+				delete props[key]
+			}
+		}
+	}
+
+```
+</CH.Code>
+
+---
+
+用伪代码回顾下 `update` 整个流程
+
+<CH.Code>
+```bash demo.bash
+	# fontColor changed
+	# invoke deps update -〉 start update App
+	> componentUpdateFn / update
+		> renderComponentRoot
+		> patch
+		> processComponent
+			> updateComponent
+				> instance.update
+				# start update Comp
+				> componentUpdateFn / update
+					> renderComponentRoot
+					> updateComponentPreRender
+					> patch
+						# start update div
+						> processElement
+							> patchElement
+								> patchProps
+						# end update div
+				# end update Comp
+	# end update App
+	# should skip but unimplemented
+	# invoke deps update -〉 start update Comp
+	# start update Comp
+	> componentUpdateFn / update
+		> renderComponentRoot
+		> patch
+			# start update div
+			> processElement
+				> patchElement
+					> patchProps
+			# end update div
+	# end update Comp
+
+```
+</CH.Code>
+
+---
+
+合并下完整代码
+
+<CH.Code>
+```jsx demo.jsx
+// from ./fullCode.js
+```
+</CH.Code>
 
 </CH.Scrollycoding>
 
 <div className="mt-20 text-lg text-white">
+	本文篇幅较长，基本实现了 `props` 的更新逻辑。当然仍存在 `组件` 重复更新的问题，后续会针对性进行优化。
 </div>

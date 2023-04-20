@@ -240,6 +240,53 @@ const setFullProps = (instance, rawProps, props, attrs) => {
 	}
 }
 
+const updateComponentPreRender = (instance, nextVNode) => {
+	nextVNode.component = instance
+	const prevProps = instance.vnode.props
+	instance.vnode = nextVNode
+	instance.next = null
+
+	updateProps(instance, nextVNode.props, prevProps)
+}
+
+const updateProps = (instance, nextProps, prevProps) => {
+	const { props, attrs } = instance
+	const rawCurrentProps = props
+	
+	setFullProps(instance, nextProps, props, attrs)
+
+	for (const key in rawCurrentProps) {
+		if (!nextProps || !hasOwn(nextProps, key)) {
+			delete props[key]
+		}
+	}
+}
+
+const shouldUpdateComponent = (n1, n2) => {
+	const { props: p1 } = n1
+	const { props: p2 } = n2
+
+	if (p1 === p2) return false
+	if (!p1) return !!p2
+	if (!p2) return true
+
+	return hasPropsChanged(p1, p2)
+}
+
+const hasPropsChanged = (prevProps, nextProps) => {
+	const nextKeys = Object.keys(nextProps)
+
+	if (Object.keys(prevProps).length !== nextKeys.length) return true
+
+	for (let i = 0; i < nextKeys.length; i++) {
+		const key = nextKeys[i]
+		if (prevProps[key] !== nextProps[key]) {
+			return true
+		}
+	}
+	return false
+}
+
 const isObject = val => val !== null && typeof val === 'object'
 const isFunction = val => typeof val === 'function'
 const isString = val => typeof val === 'string'
@@ -251,7 +298,9 @@ const nodeOpts = {
 	setElementText: (el, text) => el.textContent = text,
 	insert: (parent, child, anchor) => {
 		return parent.insertBefore(child, anchor)
-	}
+	},
+	parentNode: node => node.parentNode,
+	nextSibling: node => node.nextSibling
 }
 
 const patchProp = (
@@ -347,7 +396,9 @@ const ensureRenderer = (renderOptions) => {
 		createElement: hostCreateElement,
 		setElementText: hostSetElementText,
 		insert: hostInsert,
-		patchProp: hostPatchProp
+		patchProp: hostPatchProp,
+		parentNode: hostParentNode,
+		nextSibling: hostNextSibling
 	} = renderOptions
 
 	const patch = (
@@ -384,6 +435,19 @@ const ensureRenderer = (renderOptions) => {
 		if (!n1) {
 			mountComponent(n2, container, anchor, parentComponent)
 		} else {
+			updateComponent(n1, n2)
+		}
+	}
+
+	const updateComponent = (n1, n2) => {
+		const instance = n2.component = n1.component
+
+		if (shouldUpdateComponent(n1, n2)) {
+			instance.next = n2
+			instance.update()
+		} else {
+			n2.el = n1.el
+			instance.vnode = n2
 		}
 	}
 	
@@ -441,18 +505,25 @@ const ensureRenderer = (renderOptions) => {
 				vnode.el = subTree.el
 				instance.isMounted = true
 			} else {
-				const nextTree = instance.render()
+				let { next, vnode } = instance
+
+				if (next) {
+					next.el = vnode.el
+					updateComponentPreRender(instance, next)
+				} else {
+					next = vnode
+				}
+				const nextTree = renderComponentRoot(instance)
 				const prevTree = instance.subTree
-				instance.subTree = nextTree
+        instance.subTree = nextTree
 	
-				// TODO patch
-				// patch(
-				// 	prevTree,
-				// 	nextTree,
-				// 	hostParentNode(prevTree.el),
-				// 	hostNextSibling(prevTree.anchor || prevTree.el)
-				// )
-				// next.el = nextTree.el
+				patch(
+					prevTree,
+					nextTree,
+					hostParentNode(prevTree.el),
+					hostNextSibling(prevTree.anchor || prevTree.el)
+				)
+				next.el = nextTree.el
 			}
 		}
 	
@@ -589,6 +660,7 @@ const Comp = {
 	emits: ['changeColor'],
 	setup(props, { emit }) {
 		return () => (
+			console.log('Comp render'),
 			h('div',
 				{
 					onClick: () => emit('changeColor'),
@@ -605,13 +677,14 @@ createApp({
 	setup() {
 		const fontColor = reactive({ value: '#5dbe8a' })
 		const handleChangeColor = () => {
-			console.log(123)
 			fontColor.value = '#baccd9'
 		}
 
 		return () => (
+			console.log('app render'),
 			h(Comp,
 				{
+					inheritCustomAttr: fontColor.value,
 					fontColor: fontColor,
 					class: 'text-white',
 					onChangeColor: handleChangeColor
