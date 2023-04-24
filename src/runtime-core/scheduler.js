@@ -14,9 +14,9 @@ export const queueJob = (job) => {
 		} else {
 			queue.splice(findInsertionIndex(job.id), 0, job)
 		}
+		queueFlush()
 	}
 
-	queueFlush()
 }
 
 const queueFlush = () => {
