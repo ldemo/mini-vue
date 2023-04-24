@@ -12,10 +12,10 @@
 const Comp = {
 	props: ['fontColor'],
 	emits: ['changeColor'],
-	setup(props, { emits }) {
+	setup(props, { emit }) {
 		return () => (
 			<div
-				onClick={() => emits('changeColor')}
+				onClick={() => emit('changeColor')}
 				style={{ color: props.fontColor.value }}
 			>
 				hello world

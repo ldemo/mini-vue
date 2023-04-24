@@ -30,7 +30,10 @@ const trigger = (target, key) => {
 	const deps = depsMap.get(key)
 	if (!deps) return
 
-	deps.forEach(v => v.run())
+	deps.forEach(v => {
+		if (v === activeEffect) return
+		v.run()
+	})
 }
 
 class ReactiveEffect {
@@ -134,7 +137,6 @@ const createComponentInstance = (vnode, parent) => {
 		type,
 		parent,
 
-		// TODO
 		propsOptions: normalizePropsOptions(type),
 		emitsOptions: normalizeEmitsOptions(type),
 
@@ -144,7 +146,6 @@ const createComponentInstance = (vnode, parent) => {
 		emit: null
 	}
 
-	// TODO
 	instance.emit = emit.bind(null, instance)
 
 	return instance
