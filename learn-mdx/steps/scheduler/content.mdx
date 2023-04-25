@@ -1,0 +1,317 @@
+<CH.Scrollycoding showCopyButton={true} showExpandButton={false}>
+<br />
+<br />
+<br />
+<br />
+按照惯例，先用 `h` 函数重写目标代码。
+<br />
+<br />
+<br />
+<br />
+
+<CH.Code>
+```jsx demo.jsx
+	const Comp = {
+		props: ['fontColor'],
+		emits: ['change'],
+		setup(props, { emit }) {
+			return () => (
+				console.log('Comp render'),
+				h('div',
+					{
+						onClick: () => emit('change'),
+						style: {
+							color: props.fontColor.value
+						}
+					},
+					'hello world'
+				)
+			)
+		}
+	}
+	createApp({
+		setup() {
+			const fontColor = reactive({ value: '#5dbe8a' })
+			const count = reactive({ value: 1 })
+			const handleChange = () => {
+				count.value += 1
+				fontColor.value = '#baccd9'
+			}
+
+			return () => (
+				console.log(`App render ${count.value}`),
+				h(Comp,
+					{
+						inheritCustomAttr: fontColor.value,
+						fontColor: fontColor,
+						onChange: handleChange
+					}
+				)
+			)
+		}
+	}).mount('#root')
+
+```
+</CH.Code>
+
+---
+
+解决方案既然是要把组件的更新动作放在 `异步` 里面。先把更新的动作定义为 `job`。
+
+<CH.Code>
+```jsx demo.jsx
+	const queue = []
+
+	const queueJob = (job) => {
+		if (
+			!queue.length ||
+			!queue.includes(job)
+		) {
+			queue.push(job)
+			// TODO
+			queueFlush()
+		}
+	}
+```
+</CH.Code>
+
+---
+
+实现下消费队列的逻辑
+
+<CH.Code>
+```jsx demo.jsx
+let isFlushing = false
+let isFlushPending = false
+const resolvedPromise = Promise.resolve()
+
+const queueFlush = () => {
+	if (!isFlushPending && !isFlushing) {
+		isFlushPending = true
+		resolvedPromise.then(flushJob)
+	}
+}
+
+const flushJob = () => {
+	isFlushPending = false
+	isFlushing = true
+	
+	for (let i = 0; i < queue.length; i++) {
+		const job = queue[i]
+		job()
+	}
+
+	queue.length = 0
+	isFlushing = false
+}
+
+```
+</CH.Code>
+
+---
+
+思考一下，`App` 组件的更新会造成 `Comp` 的更新，那如果更新的时机是
+`Comp` 先开始，然后是 `App`，那 `Comp` 应该更新几次。
+<br />
+答案自然也是一次，所以我们确保 `父组件` 始终先于 `子组件`，且 `父组件` 更新时，
+若 `子组件` 的更新也在队列中，那就取消他。
+<br />
+新增 `id` 属性 
+<CH.Code>
+```jsx demo.jsx
+
+const getId = (job) => job.id == null ? Infinity : job.id
+
+const flushJob = () => {
+	isFlushPending = false
+	isFlushing = true
+
+	queue.sort((a, b) => getId(a) - getId(b))
+
+	for (let i = 0; i < queue.length; i++) {
+		const job = queue[i]
+		job()
+	}
+
+	queue.length = 0
+	isFlushing = false
+}
+```
+</CH.Code>
+
+---
+
+那`id` 属性在哪赋值呢？我们待会实现。  
+先实现下取消 `job` 的函数。
+
+<CH.Code>
+```jsx demo.jsx
+	const invalidateJob = (job) => {
+		const i = queue.indexOf(job)
+		queue.splice(i, 1)
+	}
+```
+</CH.Code>
+
+---
+
+实现完 `异步更新` 的具体逻辑后，先把 `组件` 的更新函数重写一下。
+
+<CH.Code>
+```jsx demo.jsx
+	// focus[7:24]
+	const setupRenderEffect = (instance, vnode, container, anchor) => {
+		const componentUpdateFn = () => {
+			...
+		}
+	
+		const update = instance.update = () => effect.run()
+		// focus
+		update.id = instance.uid
+		// focus
+		const effect = new ReactiveEffect(componentUpdateFn, () => queueJob(update))
+	
+		update()
+	}
+```
+</CH.Code>
+
+---
+
+改造下 `ReactiveEffect` 的相关逻辑
+
+<CH.Code>
+```jsx demo.jsx
+// focus[6:13]
+const trigger = (target, key) => {
+	const depsMap = targetMap.get(target)
+	if (!depsMap) return
+
+	const deps = depsMap.get(key)
+	if (!deps) return
+
+	deps.forEach(v => {
+		if (v === activeEffect) return
+		// focus
+		v.scheduler ? v.scheduler() : v.run()
+	})
+}
+
+// focus[6:20]
+class ReactiveEffect {
+	_fn = null
+	scheduler = null
+
+	constructor(fn, scheduler) {
+		this._fn = fn
+		// focus
+		this.scheduler = scheduler
+	}
+
+	run() {
+		activeEffect = this
+		this._fn()
+		activeEffect = null
+	}
+}
+```
+</CH.Code>
+
+---
+
+那 `uid` 从哪来?
+<br />
+从初始化组件的时候，这样 `子组件` 的 `uid` 始终会比 `父组件` 的 `uid` 要大。 
+
+<CH.Code>
+```jsx demo.jsx
+// focus
+let uid = 0
+
+// focus[7:30]
+const createComponentInstance = (vnode, parent) => {
+	const type = vnode.type
+	const instance = {
+		// focus
+		uid: uid++,
+		vnode,
+		type,
+		parent,
+
+		// TODO
+		propsOptions: normalizePropsOptions(type),
+		emitsOptions: normalizeEmitsOptions(type),
+
+		props: {},
+		attrs: {},
+
+		emit: null
+	}
+
+	instance.emit = emit.bind(null, instance)
+
+	return instance
+}
+
+```
+</CH.Code>
+
+---
+
+这样，组件的 `update` 就都被放入了 `异步消费队列` 中。
+<br />
+然后就是在 `App` 的 `update` 中取消 `Comp` 的 `update`。
+回顾一下，该在哪里执行这段逻辑？
+
+<CH.Code>
+```jsx demo.jsx
+	const updateComponent = (n1, n2) => {
+		const instance = n2.component = n1.component
+
+		if (shouldUpdateComponent(n1, n2)) {
+			instance.next = n2
+			instance.update()
+		} else {
+			n2.el = n1.el
+			instance.vnode = n2
+		}
+	}
+```
+</CH.Code>
+
+---
+
+`updateComponent` 的执行时机是在 `App` 的 `patch subTree` 里面。
+在这里 `App` 的 `subTree` 即是 `Comp` 的 `vnode`。
+
+<CH.Code>
+```jsx demo.jsx
+const updateComponent = (n1, n2) => {
+		const instance = n2.component = n1.component
+
+		if (shouldUpdateComponent(n1, n2)) {
+			instance.next = n2
+			// focus
+			invalidateJob(instance.update)
+			instance.update()
+		} else {
+			n2.el = n1.el
+			instance.vnode = n2
+		}
+	}
+```
+</CH.Code>
+
+---
+
+合并下完整代码
+
+<CH.Code>
+```jsx demo.jsx
+// from ./fullCode.js
+```
+</CH.Code>
+</CH.Scrollycoding>
+<div className="mt-20 text-lg text-white">
+本篇实现了 `scheduler` 逻辑，将组件的 `update` 逻辑放入异步队列中，有效减少不必要的重复渲染。
+</div>

@@ -1,0 +1,50 @@
+<CH.Section className="mb-20">
+前文实现了 `props` 的 `mount` 和 `update` 的逻辑。但是仍存在一点问题，初次渲染时 `fontColor.value` 收集了
+`App` 和 `Comp` 两个组件的依赖，而当 `fontColor.value` 发生变更时，`Comp` 组件渲染了两次，一次是 `App` 的
+`render` 引起了 `Comp` 的 `render`，一次是依赖变更直接引起的更新。显然，`Comp` 只需要一次更新就好了。
+<br />
+组件自然不是只使用一个 `响应式数据`，那多个都存在变更时，组件是不是也应该只更新一次就好了。
+所以我们把 `render` 这个动作 `异步` 执行，这样在执行前，就可以针对性的过滤多余的更新。
+<br />
+明确本文的目标。  
+[第一步，`onChange` 事件触发](focus://demo.jsx#8,20:23,30)  
+[第二步，`App` 和 `Comp` 组件各自只渲染一次](focus://demo.jsx#6,26)
+<CH.Code>
+```jsx demo.jsx
+const Comp = {
+	props: ['fontColor'],
+	emits: ['onChange'],
+	setup(props, { emit }) {
+		return () => (
+			console.log('Comp render'),
+			<div
+				onClick={() => emit('onChange')}
+				style={{ color: props.fontColor.value }}
+			>
+				hello world
+			</div>
+		)
+	}
+}
+createApp({
+	setup() {
+		const fontColor = reactive({ value: '#5dbe8a' })
+		const count = reactive({ value: 1 })
+		const handleChange = () => {
+			count.value += 1
+			fontColor.value = '#baccd9'
+		}
+
+		return () => (
+			console.log(`App render ${count.value}`),
+			<Comp
+				inheritCustomAttr={fontColor.value}
+				fontColor={fontColor}
+				onChange={handleChange}
+			/>
+		)
+	}
+}).mount('#root')
+```
+</CH.Code>
+</CH.Section>

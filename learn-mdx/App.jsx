@@ -3,6 +3,7 @@ import CreateAppAndVNode from './steps/createAppAndVNode/index'
 import Patch from './steps/patch'
 import Reactive from './steps/reactive'
 import Props from './steps/props'
+import Scheduler from './steps/scheduler'
 import { useEffect, useState } from "react"
 import 'css-doodle'
 import Nav from './nav'
@@ -23,6 +24,10 @@ const articles = [
 	{
 		name: 'props-基本属性处理',
 		path: 'props'
+	},
+	{
+		name: 'scheduler-任务调度',
+		path: 'scheduler'
 	}
 ]
 function App() {
@@ -97,6 +102,7 @@ function App() {
 				{ activeRoutePath === 'patch' && <Patch />}
 				{ activeRoutePath === 'reactive' && <Reactive />}
 				{ activeRoutePath === 'props' && <Props />}
+				{ activeRoutePath === 'scheduler' && <Scheduler />}
 				<div className="flex justify-between mt-20 text-cyan-50 text-xl">
 					{
 						articles[activeIndex - 1]
