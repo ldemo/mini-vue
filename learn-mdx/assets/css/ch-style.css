@@ -29,7 +29,7 @@
 .ch-editor-frame,
 .ch-frame-title-bar,
 .ch-code-wrapper {
-  @apply bg-transparent !important;
+  @apply important:bg-transparent;
 }
 
 .ch-scrollycoding {
