@@ -23,6 +23,7 @@
     "@unocss/transformer-directives": "^0.51.8",
     "@vitejs/plugin-react": "^3.1.0",
     "unocss": "^0.51.8",
-    "vite": "^4.2.1"
+    "vite": "^4.2.1",
+    "vite-plugin-chunk-split": "^0.4.7"
   }
 }
